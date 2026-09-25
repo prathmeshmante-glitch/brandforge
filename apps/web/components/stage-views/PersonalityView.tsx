@@ -1,7 +1,7 @@
+'use client';
+
 import React from 'react';
-import { Sparkles, Heart, Shield, Ban, CheckCircle2, MessageSquare } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
+import { Sparkles, Heart, Shield, Ban, ArrowRight, MessageSquare } from 'lucide-react';
 
 interface PersonalityViewProps {
   personalityData: any;
@@ -16,128 +16,221 @@ export const PersonalityView: React.FC<PersonalityViewProps> = ({
 }) => {
   if (!personalityData) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        <Sparkles className="w-8 h-8 mx-auto mb-2 animate-spin text-purple-400" />
-        <p>Brand Strategist Agent is crafting personality & voice principles...</p>
+      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
+        <Sparkles size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--indigo)' }} />
+        <p style={{ font: '11px monospace' }}>BRAND STRATEGIST DEFINING ARCHETYPE & VOICE...</p>
       </div>
     );
   }
 
-  const { archetype, traits, tone, emotional_goal, brand_principles, avoid_traits } = personalityData;
+  const {
+    archetype = 'Creator / Visionary',
+    traits = [],
+    tone = [],
+    emotional_goal = 'Empowered engineering clarity and trust',
+    brand_principles = [],
+    avoid_traits = [],
+  } = personalityData;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      <div className="territory-heading">
         <div>
-          <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold uppercase tracking-wider mb-1">
-            <Sparkles className="w-4 h-4" /> Stage 03 — Brand Strategist Agent
+          <span className="section-index">STAGE 03 / CHARACTER</span>
+          <h2>Defining how it should feel.</h2>
+        </div>
+        <p>
+          Archetype, emotional resonance, and voice principles<br />
+          that protect against generic corporate tone.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+        {/* Core Brand Archetype */}
+        <div
+          style={{
+            background: 'radial-gradient(ellipse at 85% 15%, rgba(124, 92, 255, 0.15), transparent 50%), linear-gradient(135deg, #171422, #111217)',
+            border: '1px solid rgba(124, 92, 255, 0.3)',
+            borderRadius: '16px',
+            padding: '24px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b4a5ff', marginBottom: '8px' }}>
+            <Sparkles size={16} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              CORE BRAND ARCHETYPE
+            </span>
           </div>
-          <h2 className="text-2xl font-bold text-white">Brand Personality & Voice System</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Human attributes, tone of voice, archetype, and brand boundaries.
+          <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '28px', color: '#fff', margin: '8px 0 10px', fontWeight: 500 }}>
+            {archetype}
+          </h3>
+          <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+            Defines the cognitive presence and baseline posture for all visual and verbal expressions.
+          </p>
+        </div>
+
+        {/* Primary Emotional Goal */}
+        <div
+          style={{
+            background: 'radial-gradient(ellipse at 85% 15%, rgba(245, 165, 36, 0.12), transparent 50%), linear-gradient(135deg, #181512, #111217)',
+            border: '1px solid rgba(245, 165, 36, 0.25)',
+            borderRadius: '16px',
+            padding: '24px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--amber)', marginBottom: '8px' }}>
+            <Heart size={16} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              PRIMARY EMOTIONAL GOAL
+            </span>
+          </div>
+          <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', color: '#ffebc4', margin: '8px 0 10px', fontWeight: 500, fontStyle: 'italic' }}>
+            "{emotional_goal}"
+          </h3>
+          <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+            The target sensation the brand leaves with founders, users, and partners across every touchpoint.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {/* Brand Archetype */}
-        <Card className="p-6 bg-gradient-to-br from-purple-950/30 to-slate-900 border-purple-500/30">
-          <div className="flex items-center gap-2 text-purple-400 font-semibold text-xs uppercase tracking-wider mb-2">
-            <Sparkles className="w-4 h-4" /> Core Brand Archetype
+      {/* Traits & Tone Descriptors */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--subtle)', marginBottom: '14px' }}>
+            <Sparkles size={14} color="#b4a5ff" />
+            <span style={{ font: '9px monospace', letterSpacing: '0.12em', fontWeight: 700, color: 'var(--muted)' }}>
+              KEY PERSONALITY TRAITS
+            </span>
           </div>
-          <h3 className="text-2xl font-extrabold text-white mb-2">{archetype}</h3>
-          <p className="text-slate-300 text-xs leading-relaxed">
-            The archetype defines the psychological persona and emotional baseline for all visual and verbal communication.
-          </p>
-        </Card>
-
-        {/* Emotional Goal */}
-        <Card className="p-6 bg-gradient-to-br from-indigo-950/30 to-slate-900 border-indigo-500/30">
-          <div className="flex items-center gap-2 text-indigo-400 font-semibold text-xs uppercase tracking-wider mb-2">
-            <Heart className="w-4 h-4" /> Primary Emotional Goal
-          </div>
-          <p className="text-lg font-bold text-slate-100 mb-2">"{emotional_goal}"</p>
-          <p className="text-slate-400 text-xs leading-relaxed">
-            The targeted feeling users experience when interacting with your brand across touchpoints.
-          </p>
-        </Card>
-      </div>
-
-      {/* Traits & Tone Chips */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Card className="p-5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Key Personality Traits
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            {(traits || []).map((trait: string, idx: number) => (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {traits.map((trait: string, idx: number) => (
               <span
                 key={idx}
-                className="px-3 py-1.5 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/20 text-xs font-medium shadow-sm"
+                style={{
+                  font: '10px monospace',
+                  color: '#d6cdff',
+                  background: 'rgba(124, 92, 255, 0.12)',
+                  border: '1px solid rgba(124, 92, 255, 0.25)',
+                  borderRadius: '999px',
+                  padding: '5px 12px',
+                }}
               >
                 {trait}
               </span>
             ))}
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-            <MessageSquare className="w-3.5 h-3.5 text-indigo-400" /> Tone of Voice Descriptors
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            {(tone || []).map((t: string, idx: number) => (
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--subtle)', marginBottom: '14px' }}>
+            <MessageSquare size={14} color="var(--indigo)" />
+            <span style={{ font: '9px monospace', letterSpacing: '0.12em', fontWeight: 700, color: 'var(--muted)' }}>
+              TONE OF VOICE DESCRIPTORS
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {tone.map((t: string, idx: number) => (
               <span
                 key={idx}
-                className="px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs font-medium shadow-sm"
+                style={{
+                  font: '10px monospace',
+                  color: '#c2b8ff',
+                  background: 'rgba(124, 92, 255, 0.08)',
+                  border: '1px solid rgba(124, 92, 255, 0.2)',
+                  borderRadius: '999px',
+                  padding: '5px 12px',
+                }}
               >
                 {t}
               </span>
             ))}
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Brand Principles & Avoid Traits */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Card className="p-5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-            <Shield className="w-3.5 h-3.5 text-emerald-400" /> Core Brand Principles
-          </h4>
-          <ul className="space-y-2 text-xs text-slate-300">
-            {(brand_principles || []).map((principle: string, idx: number) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+      {/* Brand Principles & Avoid Boundaries */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--sage)', marginBottom: '12px' }}>
+            <Shield size={15} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              CORE BRAND PRINCIPLES
+            </span>
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {brand_principles.map((principle: string, idx: number) => (
+              <li key={idx} style={{ fontSize: '12px', color: '#e2dcff', display: 'flex', gap: '8px' }}>
+                <span style={{ color: 'var(--sage)' }}>•</span>
                 <span>{principle}</span>
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
 
-        <Card className="p-5 bg-rose-950/10 border-rose-500/20">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-rose-400 mb-3 flex items-center gap-2">
-            <Ban className="w-3.5 h-3.5 text-rose-400" /> Avoid Traits (What Brand Is NOT)
-          </h4>
-          <ul className="space-y-2 text-xs text-rose-200/80">
-            {(avoid_traits || []).map((avoid: string, idx: number) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="text-rose-400 font-bold">•</span>
+        <div
+          style={{
+            background: 'radial-gradient(ellipse at 90% 10%, rgba(255, 107, 94, 0.08), transparent 50%), #121319',
+            border: '1px solid rgba(255, 107, 94, 0.2)',
+            borderRadius: '14px',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--coral)', marginBottom: '12px' }}>
+            <Ban size={15} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              AVOID TRAITS (WHAT THE BRAND IS NOT)
+            </span>
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {avoid_traits.map((avoid: string, idx: number) => (
+              <li key={idx} style={{ fontSize: '12px', color: '#eed2cf', display: 'flex', gap: '8px' }}>
+                <span style={{ color: 'var(--coral)' }}>✕</span>
                 <span>{avoid}</span>
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       </div>
 
-      <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
-          Personality principles will guide the Naming Agent and Brand Voice generator.
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: '20px',
+          borderTop: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <p style={{ fontSize: '12px', color: 'var(--muted)', margin: 0 }}>
+          Personality principles will govern naming territory boundaries and tone of voice.
         </p>
 
-        <Button variant="primary" onClick={onAccept} isLoading={isLoading}>
-          <CheckCircle2 className="w-4 h-4" />
-          Accept Personality & Continue
-        </Button>
+        <button onClick={onAccept} disabled={isLoading} className="button button-primary">
+          Confirm Personality & Continue <ArrowRight size={14} />
+        </button>
       </div>
     </div>
   );

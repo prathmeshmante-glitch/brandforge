@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Target, CheckCircle2, Sparkles, Shield, ArrowRight } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
+'use client';
+
+import React from 'react';
+import { Target, Check, ArrowRight } from 'lucide-react';
 
 interface PositioningViewProps {
   positioningData: any;
@@ -20,9 +20,9 @@ export const PositioningView: React.FC<PositioningViewProps> = ({
 }) => {
   if (!positioningData || !positioningData.directions) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        <Target className="w-8 h-8 mx-auto mb-2 animate-spin text-indigo-400" />
-        <p>Positioner Agent is evaluating strategic directions...</p>
+      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
+        <Target size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--indigo)' }} />
+        <p style={{ font: '11px monospace' }}>POSITIONER AGENT EVALUATING STRATEGIC ANGLES...</p>
       </div>
     );
   }
@@ -31,120 +31,117 @@ export const PositioningView: React.FC<PositioningViewProps> = ({
   const activeSelection = selectedDirection || directions[0]?.name;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      <div className="territory-heading">
         <div>
-          <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-1">
-            <Target className="w-4 h-4" /> Stage 02 — Positioner Agent
-          </div>
-          <h2 className="text-2xl font-bold text-white">Strategic Positioning Directions</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Select the positioning angle that best defines your market differentiation and competitive stance.
-          </p>
+          <span className="section-index">STAGE 02 / STRATEGY</span>
+          <h2>Finding your sharpest angle.</h2>
         </div>
+        <p>
+          Select the strategic stance that creates<br />
+          uncompromising differentiation.
+        </p>
       </div>
 
-      {/* Grid of Positioning Direction Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
         {directions.map((dir: any, idx: number) => {
           const isSelected = dir.name === activeSelection;
 
           return (
-            <Card
+            <article
               key={idx}
-              selected={isSelected}
-              hoverable
-              className="p-6 flex flex-col justify-between cursor-pointer relative"
+              className={`name-card ${isSelected ? 'selected' : ''}`}
               onClick={() => onSelectDirection(dir.name)}
+              style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
             >
-              {isSelected && (
-                <div className="absolute top-4 right-4 bg-indigo-500 text-white p-1 rounded-full shadow-md shadow-indigo-500/50">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              )}
-
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-                    Direction 0{idx + 1}
-                  </span>
-                  <h3 className="text-lg font-bold text-white">{dir.name}</h3>
+                <div className="name-card-top">
+                  <span className="name-number">0{idx + 1}</span>
+                  {isSelected && (
+                    <span className="selected-badge">
+                      <Check size={11} /> SELECTED
+                    </span>
+                  )}
+                  <span className="more">···</span>
                 </div>
 
-                <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800/80 mb-4">
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">
-                    Positioning Statement
-                  </p>
-                  <p className="text-sm text-indigo-200 font-medium leading-relaxed italic">
+                <h2 style={{ fontSize: '26px', margin: '20px 0 8px' }}>{dir.name}</h2>
+
+                <div
+                  style={{
+                    background: 'rgba(124, 92, 255, 0.08)',
+                    border: '1px solid rgba(124, 92, 255, 0.2)',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                    margin: '12px 0 16px',
+                  }}
+                >
+                  <span style={{ font: '8px monospace', color: '#ab9cff', letterSpacing: '0.12em', display: 'block', marginBottom: '4px' }}>
+                    POSITIONING STATEMENT
+                  </span>
+                  <p style={{ font: '12px/1.5 Georgia, serif', color: '#e2dcff', margin: 0, fontStyle: 'italic' }}>
                     "{dir.positioning_statement}"
                   </p>
                 </div>
 
-                <div className="space-y-3 text-xs text-slate-300">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '11px', color: 'var(--muted)', margin: '14px 0' }}>
                   <div>
-                    <span className="text-slate-400 font-semibold block mb-0.5">Core Problem Addressed</span>
-                    <p>{dir.core_problem}</p>
+                    <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block' }}>
+                      VALUE PROPOSITION
+                    </span>
+                    <b style={{ color: '#d8d8df', fontWeight: 500, fontSize: '11px' }}>{dir.value_proposition}</b>
                   </div>
 
                   <div>
-                    <span className="text-slate-400 font-semibold block mb-0.5">Unique Value Proposition</span>
-                    <p className="text-slate-200">{dir.value_proposition}</p>
+                    <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block' }}>
+                      DIFFERENTIATOR
+                    </span>
+                    <b style={{ color: 'var(--indigo)', fontWeight: 500, fontSize: '11px' }}>{dir.differentiator}</b>
                   </div>
 
-                  <div>
-                    <span className="text-slate-400 font-semibold block mb-0.5">Differentiator</span>
-                    <p className="text-indigo-300">{dir.differentiator}</p>
-                  </div>
-
-                  {dir.competitive_angle && (
+                  {dir.proof_points && (
                     <div>
-                      <span className="text-slate-400 font-semibold block mb-0.5">Competitive Angle</span>
-                      <p className="text-slate-400">{dir.competitive_angle}</p>
-                    </div>
-                  )}
-
-                  {dir.proof_points && dir.proof_points.length > 0 && (
-                    <div>
-                      <span className="text-slate-400 font-semibold block mb-1">Proof Points</span>
-                      <ul className="list-disc list-inside space-y-0.5 text-slate-400">
-                        {dir.proof_points.map((pt: string, pIdx: number) => (
-                          <li key={pIdx}>{pt}</li>
-                        ))}
-                      </ul>
+                      <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block' }}>
+                        PROOF POINTS
+                      </span>
+                      <span style={{ fontSize: '10px', color: 'var(--subtle)' }}>
+                        {Array.isArray(dir.proof_points) ? dir.proof_points.join(' • ') : dir.proof_points}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                <span className="text-xs text-slate-500">
-                  {isSelected ? '✓ Selected as active direction' : 'Click to select this direction'}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ font: '9px monospace', color: 'var(--subtle)' }}>
+                  {isSelected ? 'Active direction' : 'Click to select'}
                 </span>
-                <Button
-                  variant={isSelected ? 'primary' : 'outline'}
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectDirection(dir.name);
-                  }}
-                >
-                  {isSelected ? 'Selected' : 'Select Direction'}
-                </Button>
+                <button className="select-button" type="button">
+                  {isSelected ? 'Selected' : 'Select direction'} <ArrowRight size={13} />
+                </button>
               </div>
-            </Card>
+            </article>
           );
         })}
       </div>
 
-      <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-        <p className="text-xs text-slate-400">
-          Chosen direction will anchor Personality, Naming, Visual Identity, and Brand Battle.
-        </p>
-
-        <Button variant="primary" onClick={onAccept} isLoading={isLoading}>
-          <CheckCircle2 className="w-4 h-4" />
-          Confirm Direction & Continue
-        </Button>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: '20px',
+          borderTop: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <div style={{ fontSize: '12px', color: 'var(--muted)' }}>
+          Selected positioning: <strong style={{ color: '#fff' }}>{activeSelection}</strong>
+        </div>
+        <button onClick={onAccept} disabled={isLoading} className="button button-primary">
+          Confirm Direction & Continue <ArrowRight size={14} />
+        </button>
       </div>
     </div>
   );

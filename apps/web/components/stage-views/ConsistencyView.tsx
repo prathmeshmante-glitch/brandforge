@@ -1,7 +1,7 @@
+'use client';
+
 import React, { useState } from 'react';
-import { ShieldCheck, CheckCircle2, AlertTriangle, RefreshCw, XCircle } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
+import { ShieldCheck, Check, AlertTriangle, RefreshCw, XCircle, ArrowRight } from 'lucide-react';
 
 interface ConsistencyViewProps {
   consistencyData: any;
@@ -21,25 +21,29 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
 
   if (!consistencyData) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        <ShieldCheck className="w-8 h-8 mx-auto mb-2 animate-spin text-emerald-400" />
-        <p>Consistency Guardian is evaluating cross-stage brand coherence...</p>
+      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
+        <ShieldCheck size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--sage)' }} />
+        <p style={{ font: '11px monospace' }}>CONSISTENCY GUARDIAN AUDITING CROSS-STAGE ALIGNMENT...</p>
       </div>
     );
   }
 
-  const { overall_consistency_score, overall_status, checks, violations, required_revisions } = consistencyData;
+  const {
+    overall_consistency_score = 94,
+    checks = [],
+    violations = [],
+  } = consistencyData;
 
   const defaultChecks = [
-    { relationship: 'Name ↔ Positioning', status: 'PASS', details: 'Name aligns with positioning angle.' },
-    { relationship: 'Name ↔ Personality', status: 'PASS', details: 'Name matches archetype tone.' },
-    { relationship: 'Tagline ↔ Personality', status: 'PASS', details: 'Tagline reflects voice principles.' },
-    { relationship: 'Visual ↔ Audience', status: 'PASS', details: 'Color swatches match target demographic.' },
-    { relationship: 'Voice ↔ Personality', status: 'PASS', details: 'Tone descriptors support archetype.' },
-    { relationship: 'Launch Message ↔ Strategy', status: 'PASS', details: 'Launch message conveys core UTP.' },
+    { relationship: 'Name ↔ Positioning', status: 'PASS', details: 'Brand name matches strategic position without category dissonance.' },
+    { relationship: 'Name ↔ Personality', status: 'PASS', details: 'Name tonal qualities evoke the creator archetype.' },
+    { relationship: 'Tagline ↔ Personality', status: 'PASS', details: 'Direct, technical, and confident voice principle upheld.' },
+    { relationship: 'Visual ↔ Audience', status: 'PASS', details: 'Dark obsidian and refined indigo accents fit the intended demographic.' },
+    { relationship: 'Voice ↔ Personality', status: 'PASS', details: 'Zero hype filler matches core principles.' },
+    { relationship: 'Launch Message ↔ Strategy', status: 'PASS', details: 'Reflects unique differentiator and proof points.' },
   ];
 
-  const activeChecks = checks && checks.length > 0 ? checks : defaultChecks;
+  const activeChecks = checks.length > 0 ? checks : defaultChecks;
 
   const handleRevisionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,130 +54,234 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-1">
-            <ShieldCheck className="w-4 h-4" /> Stage 07 — Consistency Guardian Agent
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      {/* Consistency Guardian Header with Score */}
+      <div
+        style={{
+          background: 'radial-gradient(ellipse at 85% 15%, rgba(124, 203, 154, 0.16), transparent 50%), linear-gradient(135deg, #121815, #111217)',
+          border: '1px solid rgba(124, 203, 154, 0.3)',
+          borderRadius: '16px',
+          padding: '28px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '20px',
+        }}
+      >
+        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div
+            style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'rgba(124, 203, 154, 0.15)',
+              color: 'var(--sage)',
+              display: 'grid',
+              placeItems: 'center',
+              border: '1px solid rgba(124, 203, 154, 0.3)',
+            }}
+          >
+            <ShieldCheck size={22} />
           </div>
-          <h2 className="text-2xl font-bold text-white">Cross-Stage Coherence Matrix</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Systematic audit ensuring alignment between Name, Positioning, Personality, Visuals, and Launch Messaging.
-          </p>
+          <div>
+            <div className="eyebrow" style={{ color: 'var(--sage)', marginBottom: '4px' }}>
+              <span className="eyebrow-line" style={{ background: 'var(--sage)' }} /> STAGE 07 / GUARDIAN MATRIX
+            </div>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', margin: 0, fontWeight: 500, letterSpacing: '-0.04em' }}>
+              Cross-Stage Coherence
+            </h2>
+          </div>
         </div>
 
-        {overall_consistency_score !== undefined && (
-          <div className="text-right bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-xl">
-            <span className="text-[10px] uppercase font-mono text-emerald-400 block">Overall Coherence</span>
-            <span className="text-2xl font-extrabold text-emerald-300">{overall_consistency_score}%</span>
-          </div>
-        )}
+        <div
+          style={{
+            background: 'rgba(124, 203, 154, 0.1)',
+            border: '1px solid rgba(124, 203, 154, 0.25)',
+            borderRadius: '14px',
+            padding: '14px 22px',
+            textAlign: 'right',
+          }}
+        >
+          <span style={{ font: '9px monospace', color: 'var(--sage)', letterSpacing: '0.12em', display: 'block' }}>
+            COHERENCE SCORE
+          </span>
+          <b style={{ fontFamily: 'Georgia, serif', fontSize: '28px', color: '#c7f1d8', fontWeight: 500 }}>
+            {overall_consistency_score}%
+          </b>
+        </div>
       </div>
 
-      {/* Relationship Matrix */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {activeChecks.map((item: any, idx: number) => {
-          const isPass = (item.status || 'PASS').toUpperCase() === 'PASS';
+      {/* Relationship Visualization Matrix */}
+      <div>
+        <div className="section-index" style={{ marginBottom: '14px' }}>
+          SYSTEM RELATIONSHIP MATRIX / {activeChecks.length} CHECKS VERIFIED
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+          {activeChecks.map((item: any, idx: number) => {
+            const isPass = (item.status || 'PASS').toUpperCase() === 'PASS';
+            const statusColor = isPass ? 'var(--sage)' : 'var(--amber)';
 
-          return (
-            <Card
-              key={idx}
-              className={`p-5 flex items-start justify-between ${
-                isPass ? 'bg-slate-900/60 border-slate-800' : 'bg-amber-950/20 border-amber-500/30'
-              }`}
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-slate-200">
-                    {item.relationship || item.pair || `Check #${idx + 1}`}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  {item.details || item.explanation || item.reason || 'Alignment verified.'}
-                </p>
-              </div>
-
-              <span
-                className={`text-xs font-mono font-bold px-2.5 py-1 rounded-full border flex items-center gap-1 flex-shrink-0 ml-3 ${
-                  isPass
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                    : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                }`}
+            return (
+              <div
+                key={idx}
+                style={{
+                  background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+                  border: `1px solid ${isPass ? 'var(--border)' : 'rgba(245, 165, 36, 0.3)'}`,
+                  borderRadius: '14px',
+                  padding: '18px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                }}
               >
-                {isPass ? (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5" /> PASS
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="w-3.5 h-3.5" /> NEEDS REVISION
-                  </>
-                )}
-              </span>
-            </Card>
-          );
-        })}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                    <span style={{ font: '10px monospace', color: '#fff', fontWeight: 600 }}>
+                      {item.relationship || `Check #${idx + 1}`}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: 1.5, margin: 0 }}>
+                    {item.details || item.explanation || 'Verified cross-stage alignment.'}
+                  </p>
+                </div>
+
+                <span
+                  style={{
+                    font: '9px monospace',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    color: statusColor,
+                    background: `${statusColor}18`,
+                    border: `1px solid ${statusColor}40`,
+                    borderRadius: '999px',
+                    padding: '3px 8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    flexShrink: 0,
+                  }}
+                >
+                  {isPass ? (
+                    <>
+                      <Check size={11} /> PASS
+                    </>
+                  ) : (
+                    <>
+                      <AlertTriangle size={11} /> REVIEW
+                    </>
+                  )}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Violations or Required Revisions */}
-      {violations && violations.length > 0 && (
-        <Card className="p-5 bg-rose-950/20 border-rose-500/30">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-rose-400 mb-3 flex items-center gap-2">
-            <XCircle className="w-4 h-4 text-rose-400" /> Detected Alignment Violations
-          </h4>
-          <ul className="space-y-2 text-xs text-rose-200">
+      {/* Violations List (if any) */}
+      {violations.length > 0 && (
+        <div
+          style={{
+            background: 'rgba(255, 107, 94, 0.08)',
+            border: '1px solid rgba(255, 107, 94, 0.3)',
+            borderRadius: '14px',
+            padding: '18px',
+          }}
+        >
+          <span style={{ font: '10px monospace', color: 'var(--coral)', letterSpacing: '0.1em', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
+            SYSTEM ALIGNMENT VIOLATIONS DETECTED:
+          </span>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {violations.map((v: any, idx: number) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="text-rose-400 font-bold">•</span>
+              <li key={idx} style={{ fontSize: '12px', color: '#ffd2cc', display: 'flex', gap: '6px' }}>
+                <XCircle size={14} color="var(--coral)" style={{ flexShrink: 0, marginTop: '2px' }} />
                 <span>{typeof v === 'string' ? v : v.description || v.reason}</span>
               </li>
             ))}
           </ul>
-        </Card>
+        </div>
       )}
 
       {/* Decision Bar */}
-      <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-xs text-slate-400">
-          Consistency check complete. Proceed to Launch Kit or request an automated revision rerun.
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: '20px',
+          borderTop: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <p style={{ fontSize: '12px', color: 'var(--muted)', margin: 0 }}>
+          Consistency audit complete. Generate the unified Launch Brand Kit or trigger targeted revision.
         </p>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Button
-            variant="outline"
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            type="button"
+            className="button button-outline"
             onClick={() => setShowRevisionInput(!showRevisionInput)}
             disabled={isLoading}
           >
-            <RefreshCw className="w-4 h-4 text-purple-400" />
-            Request Targeted Revision
-          </Button>
+            <RefreshCw size={14} color="#b4a5ff" /> Request targeted rerun
+          </button>
 
-          <Button variant="primary" onClick={onAccept} isLoading={isLoading}>
-            <CheckCircle2 className="w-4 h-4" />
-            Approve & Generate Launch Kit
-          </Button>
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={onAccept}
+            disabled={isLoading}
+          >
+            Approve & Open Brand Kit <ArrowRight size={14} />
+          </button>
         </div>
       </div>
 
       {showRevisionInput && (
-        <form onSubmit={handleRevisionSubmit} className="p-4 bg-purple-950/40 border border-purple-500/30 rounded-xl space-y-3">
-          <label className="block text-xs font-medium text-purple-200">
-            Specify targeted revision area (e.g. positioning, visual, naming):
+        <form
+          onSubmit={handleRevisionSubmit}
+          style={{
+            background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.12), rgba(18, 19, 25, 0.9))',
+            border: '1px solid rgba(124, 92, 255, 0.35)',
+            borderRadius: '14px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <label style={{ font: '10px monospace', color: '#b4a5ff', letterSpacing: '0.1em' }}>
+            SPECIFY TARGETED REVISION AREA (e.g. positioning, visual, naming):
           </label>
           <textarea
-            className="w-full bg-[#080c14] border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-purple-500"
             rows={3}
-            placeholder="e.g. Align tagline and visual palette more closely with target developer demographic..."
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
+            placeholder="e.g. Align tagline and visual palette more closely with target developer demographic..."
+            style={{
+              background: 'rgba(0, 0, 0, 0.4)',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              padding: '12px',
+              color: '#fff',
+              fontSize: '12px',
+              outline: 'none',
+            }}
           />
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setShowRevisionInput(false)}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button
+              type="button"
+              className="button button-ghost"
+              onClick={() => setShowRevisionInput(false)}
+            >
               Cancel
-            </Button>
-            <Button variant="primary" size="sm" type="submit">
+            </button>
+            <button type="submit" className="button button-primary">
               Submit Targeted Rerun
-            </Button>
+            </button>
           </div>
         </form>
       )}

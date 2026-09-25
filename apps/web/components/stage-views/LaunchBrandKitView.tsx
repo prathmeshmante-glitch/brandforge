@@ -1,7 +1,7 @@
+'use client';
+
 import React from 'react';
-import { Rocket, Download, Share2, Sparkles, Palette, Type, MessageSquare, Globe, CheckCircle2 } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
+import { Rocket, Download, Share2, Sparkles, Palette, Globe, MessageSquare, Check } from 'lucide-react';
 
 interface LaunchBrandKitViewProps {
   launchData: any;
@@ -16,9 +16,14 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
   onExportPDF,
   isLoading = false,
 }) => {
-  const selectedName = brandState.selected_directions?.chosen_name || brandState.naming?.suggestions?.[0]?.name || 'BrandForge';
+  const selectedName =
+    brandState.selected_directions?.chosen_name ||
+    brandState.naming?.suggestions?.[0]?.name ||
+    'NexusCraft';
   const tagline = launchData?.tagline || 'From rough idea to launch-ready brand.';
-  const pitch = launchData?.one_line_pitch || 'AI Brand Intelligence Studio that turns raw ideas into structured brand kits.';
+  const pitch =
+    launchData?.one_line_pitch ||
+    'AI Brand Intelligence Studio that turns raw ideas into structured brand kits.';
   const personality = brandState.personality;
   const visual = brandState.visual_direction;
   const colors = visual?.color_palette || [];
@@ -26,67 +31,97 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
   const socialPosts = launchData?.social_posts || [];
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-12">
-      {/* Top Banner / Hero */}
-      <div className="bg-gradient-to-r from-indigo-900/60 via-purple-900/40 to-slate-900 border border-indigo-500/30 rounded-2xl p-8 text-center relative overflow-hidden shadow-2xl shadow-indigo-500/10">
-        <div className="absolute top-4 right-4 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full text-xs font-mono font-semibold flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5" /> Stage 08 — Launch Ready
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '40px' }}>
+      {/* Top Banner / Hero Presentation */}
+      <div
+        style={{
+          background: 'radial-gradient(ellipse at 85% 15%, rgba(124, 92, 255, 0.22), transparent 50%), linear-gradient(135deg, #171526, #111218)',
+          border: '1px solid rgba(124, 92, 255, 0.35)',
+          borderRadius: '20px',
+          padding: '40px 32px',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 25px 50px rgba(0,0,0,0.3)',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', font: '9px monospace', color: 'var(--sage)', background: 'rgba(124, 203, 154, 0.12)', border: '1px solid rgba(124, 203, 154, 0.25)', padding: '4px 12px', borderRadius: '999px', marginBottom: '18px' }}>
+          <Check size={11} /> STAGE 08 / LAUNCH READY BRAND BOOK
         </div>
 
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">
-          <Rocket className="w-6 h-6 text-white" />
-        </div>
+        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(40px, 6vw, 64px)', fontWeight: 500, letterSpacing: '-0.05em', margin: '0 0 12px', color: '#fff' }}>
+          {selectedName}
+        </h1>
+        <p style={{ font: '18px Georgia, serif', color: '#c0b7dd', margin: '0 0 14px', fontStyle: 'italic' }}>
+          {tagline}
+        </p>
+        <p style={{ fontSize: '13px', color: 'var(--muted)', maxWidth: '580px', margin: '0 auto 28px', lineHeight: 1.6 }}>
+          {pitch}
+        </p>
 
-        <span className="text-xs font-mono tracking-widest text-indigo-300 uppercase block mb-1">
-          Complete Brand System Guidelines
-        </span>
-
-        <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">{selectedName}</h1>
-        <p className="text-xl font-medium text-indigo-200 mb-4">{tagline}</p>
-        <p className="text-sm text-slate-300 max-w-2xl mx-auto leading-relaxed">{pitch}</p>
-
-        <div className="mt-6 flex items-center justify-center gap-4">
-          <Button variant="primary" size="lg" onClick={onExportPDF} isLoading={isLoading}>
-            <Download className="w-4 h-4" />
-            Download Brand Kit PDF
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
+          <button onClick={onExportPDF} disabled={isLoading} className="button button-primary">
+            <Download size={14} /> Export Brand Kit PDF
+          </button>
+          <button
             onClick={() => {
               if (navigator.clipboard) {
                 navigator.clipboard.writeText(window.location.href);
-                alert('Brand Kit share link copied to clipboard!');
+                alert('Brand Kit URL copied to clipboard.');
               }
             }}
+            className="button button-ghost"
           >
-            <Share2 className="w-4 h-4 text-slate-400" />
-            Share Brand Kit
-          </Button>
+            <Share2 size={14} /> Share brand kit
+          </button>
         </div>
       </div>
 
-      {/* Brand Guidelines Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Brand Personality & Voice */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 text-purple-400 font-semibold text-sm mb-4">
-            <Sparkles className="w-4 h-4" /> Brand Personality & Archetype
+      {/* Guidelines Bento Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+        {/* Personality & Tone */}
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: '24px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b4a5ff', marginBottom: '14px' }}>
+            <Sparkles size={16} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              BRAND ARCHETYPE & VOICE
+            </span>
           </div>
-          <div className="space-y-4 text-xs">
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <span className="text-slate-400 font-mono uppercase block mb-1">Archetype</span>
-              <span className="text-sm font-bold text-white bg-purple-500/10 px-3 py-1 rounded border border-purple-500/20 inline-block">
-                {personality?.archetype || 'Creator / Visionary'}
+              <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block', marginBottom: '4px' }}>
+                ARCHETYPE
               </span>
+              <b style={{ fontFamily: 'Georgia, serif', fontSize: '18px', color: '#fff' }}>
+                {personality?.archetype || 'Creator / Visionary'}
+              </b>
             </div>
 
             <div>
-              <span className="text-slate-400 font-mono uppercase block mb-1">Key Traits</span>
-              <div className="flex flex-wrap gap-1.5">
-                {(personality?.traits || ['Innovative', 'Structured', 'Authoritative']).map((t: string, idx: number) => (
-                  <span key={idx} className="bg-slate-800 text-slate-200 px-2.5 py-1 rounded text-xs">
+              <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block', marginBottom: '6px' }}>
+                KEY TRAITS
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {(personality?.traits || ['Innovative', 'Authoritative', 'Minimalist']).map((t: string, idx: number) => (
+                  <span
+                    key={idx}
+                    style={{
+                      font: '9px monospace',
+                      color: '#d8d2df',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                    }}
+                  >
                     {t}
                   </span>
                 ))}
@@ -94,98 +129,170 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
             </div>
 
             <div>
-              <span className="text-slate-400 font-mono uppercase block mb-1">Emotional Goal</span>
-              <p className="text-slate-200 italic font-medium">"{personality?.emotional_goal || 'Empowered clarity'}"</p>
+              <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block', marginBottom: '4px' }}>
+                EMOTIONAL RESONANCE
+              </span>
+              <p style={{ fontSize: '12px', color: '#c0b7dd', fontStyle: 'italic', margin: 0 }}>
+                "{personality?.emotional_goal || 'Empowered engineering clarity'}"
+              </p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Visual Identity Swatches */}
-        <Card className="p-6">
-          <div className="flex items-center gap-2 text-emerald-400 font-semibold text-sm mb-4">
-            <Palette className="w-4 h-4" /> Visual Identity Swatches
+        {/* Visual Identity Palette */}
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: '24px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--sage)', marginBottom: '14px' }}>
+            <Palette size={16} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              PALETTE SPECIFICATION
+            </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(65px, 1fr))', gap: '8px', marginBottom: '16px' }}>
             {colors.map((c: any, idx: number) => (
-              <div key={idx} className="bg-slate-900 rounded-lg p-2 border border-slate-800 text-center">
-                <div className="h-12 w-full rounded mb-1.5 shadow-sm" style={{ backgroundColor: c.hex }} />
-                <span className="text-[10px] font-bold text-slate-200 block truncate">{c.name}</span>
-                <span className="text-[9px] font-mono text-slate-400">{c.hex}</span>
+              <div key={idx} style={{ textAlign: 'center' }}>
+                <div
+                  style={{
+                    height: '48px',
+                    borderRadius: '8px',
+                    backgroundColor: c.hex,
+                    marginBottom: '6px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                />
+                <span style={{ font: '8px monospace', color: '#fff', display: 'block' }}>{c.name}</span>
+                <span style={{ font: '8px monospace', color: 'var(--subtle)' }}>{c.hex}</span>
               </div>
             ))}
           </div>
 
           {visual?.typography && (
-            <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-              <span>Header: <strong className="text-slate-200">{visual.typography.header_font}</strong></span>
-              <span>Body: <strong className="text-slate-200">{visual.typography.body_font}</strong></span>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--muted)' }}>
+              <span>Header: <strong style={{ color: '#fff' }}>{visual.typography.header_font}</strong></span>
+              <span>Body: <strong style={{ color: '#fff' }}>{visual.typography.body_font}</strong></span>
             </div>
           )}
-        </Card>
+        </div>
       </div>
 
-      {/* Landing Page Copy & Messaging */}
-      <Card className="p-6">
-        <div className="flex items-center gap-2 text-cyan-400 font-semibold text-sm mb-4">
-          <Globe className="w-4 h-4" /> Recommended Landing Page Copy
+      {/* Recommended Launch Landing Copy */}
+      <div
+        style={{
+          background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+          border: '1px solid var(--border)',
+          borderRadius: '16px',
+          padding: '26px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--amber)', marginBottom: '16px' }}>
+          <Globe size={16} />
+          <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+            RECOMMENDED LANDING PAGE MESSAGING
+          </span>
         </div>
 
-        <div className="bg-slate-900/60 p-5 rounded-xl border border-slate-800 space-y-4">
+        <div style={{ background: '#0a0a0c', border: '1px solid var(--border)', borderRadius: '12px', padding: '22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">Hero Headline</span>
-            <p className="text-xl font-bold text-white">{landingCopy.headline || `Build Next-Gen Brands with ${selectedName}`}</p>
+            <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block', marginBottom: '4px' }}>
+              HERO HEADLINE
+            </span>
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', margin: 0, fontWeight: 500, color: '#fff' }}>
+              {landingCopy.headline || `From rough idea to launch-ready brand with ${selectedName}`}
+            </h3>
           </div>
 
           <div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">Subheadline</span>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              {landingCopy.subheadline || 'Transform unstructured ideas into launch-ready brand identities through structured AI reasoning.'}
+            <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block', marginBottom: '4px' }}>
+              SUBHEADLINE
+            </span>
+            <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.6 }}>
+              {landingCopy.subheadline || 'Transform unstructured ideas into coherent brand systems through structured AI reasoning, human decisions, critique, and consistency.'}
             </p>
           </div>
 
           <div>
-            <span className="text-[10px] font-mono text-slate-400 uppercase block mb-1">Primary Call to Action</span>
-            <span className="inline-block bg-indigo-600 text-white font-semibold text-xs px-4 py-2 rounded-lg">
-              {landingCopy.cta || 'Get Started Now'}
+            <span style={{ font: '8px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block', marginBottom: '6px' }}>
+              PRIMARY CTA
+            </span>
+            <span style={{ display: 'inline-block', background: 'var(--indigo)', color: '#fff', font: '10px monospace', padding: '6px 14px', borderRadius: '999px', letterSpacing: '0.08em' }}>
+              {landingCopy.cta || 'Start building'}
             </span>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Social Content Snippets */}
       {socialPosts.length > 0 && (
-        <Card className="p-6">
-          <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm mb-4">
-            <MessageSquare className="w-4 h-4" /> Launch Social Copy Snippets
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px',
+            padding: '26px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b4a5ff', marginBottom: '16px' }}>
+            <MessageSquare size={16} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              LAUNCH SOCIAL COPY
+            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
             {socialPosts.map((post: any, idx: number) => (
-              <div key={idx} className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 text-xs">
-                <span className="font-mono text-[10px] text-indigo-400 uppercase block mb-1">
-                  Platform: {post.platform || 'Twitter / X'}
+              <div
+                key={idx}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  padding: '16px',
+                }}
+              >
+                <span style={{ font: '9px monospace', color: '#ab9cff', display: 'block', marginBottom: '8px' }}>
+                  PLATFORM / {post.platform || 'X / TWITTER'}
                 </span>
-                <p className="text-slate-300 leading-relaxed italic">"{post.content || post.text}"</p>
+                <p style={{ fontSize: '12px', color: 'var(--text)', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+                  "{post.content || post.text}"
+                </p>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
       )}
 
-      {/* Final Download Bar */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Final Action */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '20px 24px',
+          background: 'rgba(255, 255, 255, 0.03)',
+          border: '1px solid var(--border)',
+          borderRadius: '14px',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
         <div>
-          <h4 className="text-sm font-bold text-white">Ready for deployment</h4>
-          <p className="text-xs text-slate-400">
-            Export vector brand assets, color specifications, and typography guidelines in high-resolution PDF format.
+          <b style={{ fontFamily: 'Georgia, serif', fontSize: '18px', color: '#fff', display: 'block' }}>
+            Brand System Finalized
+          </b>
+          <p style={{ fontSize: '11px', color: 'var(--muted)', margin: 0 }}>
+            Download complete design tokens, guidelines, and vector assets.
           </p>
         </div>
-
-        <Button variant="primary" size="lg" onClick={onExportPDF} isLoading={isLoading}>
-          <Download className="w-4 h-4" />
-          Export Brand Kit PDF
-        </Button>
+        <button onClick={onExportPDF} disabled={isLoading} className="button button-primary">
+          <Download size={14} /> Export Brand Kit PDF
+        </button>
       </div>
     </div>
   );

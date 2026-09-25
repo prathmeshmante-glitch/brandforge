@@ -28,6 +28,8 @@ export const api = {
 
   listProjects: () => fetchAPI('/api/projects'),
 
+  getProjects: () => fetchAPI('/api/projects'),
+
   getProject: (id: string) => fetchAPI(`/api/projects/${id}`),
 
   startWorkflow: (projectId: string) =>
@@ -46,4 +48,6 @@ export const api = {
 
   exportBrandKit: (projectId: string, format: string = 'pdf') =>
     fetchAPI(`/api/projects/${projectId}/export`, { method: 'POST', body: JSON.stringify({ format }) }),
+
+  getBaseUrl: () => API_BASE_URL,
 };

@@ -1,7 +1,7 @@
+'use client';
+
 import React, { useState } from 'react';
-import { Compass, CheckCircle2, RefreshCw, HelpCircle, Target, Users, AlertCircle } from 'lucide-react';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
+import { Compass, ArrowRight, RefreshCw, Target, Users, AlertCircle, HelpCircle } from 'lucide-react';
 
 interface DiscoveryViewProps {
   discoveryData: any;
@@ -21,14 +21,21 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
 
   if (!discoveryData) {
     return (
-      <div className="p-8 text-center text-slate-500">
-        <Compass className="w-8 h-8 mx-auto mb-2 animate-spin text-indigo-400" />
-        <p>Discoverer Agent is analyzing your brand idea...</p>
+      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
+        <Compass size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--indigo)' }} />
+        <p style={{ font: '11px monospace' }}>DISCOVERER AGENT PARSING BRAND CONCEPT...</p>
       </div>
     );
   }
 
-  const { core_problem, target_audience, user_context, goals, assumptions, open_questions } = discoveryData;
+  const {
+    core_problem,
+    target_audience,
+    user_context,
+    goals = [],
+    assumptions = [],
+    open_questions = [],
+  } = discoveryData;
 
   const handleRevisionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,135 +46,224 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+      <div className="territory-heading">
         <div>
-          <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-1">
-            <Compass className="w-4 h-4" /> Stage 01 — Discoverer Agent
+          <span className="section-index">STAGE 01 / FOUNDATIONS</span>
+          <h2>Understanding the real problem.</h2>
+        </div>
+        <p>
+          Your napkin concept parsed into audience realities,<br />
+          core tensions, and foundational goals.
+        </p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+        {/* Core Problem */}
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '22px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--indigo)', marginBottom: '12px' }}>
+            <Target size={16} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              CORE PROBLEM STATEMENT
+            </span>
           </div>
-          <h2 className="text-2xl font-bold text-white">Brand Intelligence Discovery</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Unstructured idea parsed into foundational problem spaces, target personas, and market goals.
+          <p style={{ fontFamily: 'Georgia, serif', fontSize: '16px', lineHeight: 1.5, color: '#f5f5f7', margin: 0 }}>
+            {core_problem}
+          </p>
+        </div>
+
+        {/* Target Audience */}
+        <div
+          style={{
+            background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '22px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--amber)', marginBottom: '12px' }}>
+            <Users size={16} />
+            <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              PRIMARY TARGET AUDIENCE
+            </span>
+          </div>
+          <p style={{ fontFamily: 'Georgia, serif', fontSize: '16px', lineHeight: 1.5, color: '#f5f5f7', margin: 0 }}>
+            {target_audience}
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Core Problem */}
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm mb-2">
-            <Target className="w-4 h-4" /> Core Problem Statement
-          </div>
-          <p className="text-slate-200 text-sm leading-relaxed">{core_problem}</p>
-        </Card>
+      {/* User Context & Strategic Goals */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+        <div
+          style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '20px',
+          }}
+        >
+          <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '8px' }}>
+            USER CONTEXT & ENVIRONMENT
+          </span>
+          <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+            {user_context}
+          </p>
+        </div>
 
-        {/* Target Audience */}
-        <Card className="p-5">
-          <div className="flex items-center gap-2 text-cyan-400 font-semibold text-sm mb-2">
-            <Users className="w-4 h-4" /> Primary Target Audience
-          </div>
-          <p className="text-slate-200 text-sm leading-relaxed">{target_audience}</p>
-        </Card>
-      </div>
-
-      {/* User Context & Goals */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            User Context & Environment
-          </h4>
-          <p className="text-slate-300 text-sm leading-relaxed">{user_context}</p>
-        </Card>
-
-        <Card className="p-5">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            Strategic Brand Goals
-          </h4>
-          <ul className="space-y-1.5 text-sm text-slate-300">
-            {(goals || []).map((goal: string, idx: number) => (
-              <li key={idx} className="flex items-start gap-2">
-                <span className="text-indigo-400 font-bold">•</span>
-                <span>{goal}</span>
+        <div
+          style={{
+            background: 'rgba(255, 255, 255, 0.02)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '20px',
+          }}
+        >
+          <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '8px' }}>
+            STRATEGIC BRAND GOALS
+          </span>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {goals.map((g: string, idx: number) => (
+              <li key={idx} style={{ fontSize: '12px', color: '#d8d8df', display: 'flex', gap: '8px' }}>
+                <span style={{ color: 'var(--indigo)' }}>•</span>
+                <span>{g}</span>
               </li>
             ))}
           </ul>
-        </Card>
-      </div>
-
-      {/* Assumptions & Open Questions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-5 bg-slate-900/40">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            Market Assumptions
-          </h4>
-          <ul className="space-y-1.5 text-sm text-slate-400">
-            {(assumptions || []).map((item: string, idx: number) => (
-              <li key={idx} className="flex items-start gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-slate-500 mt-0.5 flex-shrink-0" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-
-        <Card className="p-5 bg-slate-900/40">
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-            Open Questions
-          </h4>
-          <ul className="space-y-1.5 text-sm text-slate-400">
-            {(open_questions || []).map((item: string, idx: number) => (
-              <li key={idx} className="flex items-start gap-2">
-                <HelpCircle className="w-3.5 h-3.5 text-indigo-400 mt-0.5 flex-shrink-0" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
-
-      {/* Decision Controls */}
-      <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p className="text-xs text-slate-400">
-          Review the discovery findings. Accept to proceed to Positioning or request a targeted revision.
-        </p>
-
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Button
-            variant="outline"
-            onClick={() => setShowRevisionInput(!showRevisionInput)}
-            disabled={isLoading}
-          >
-            <RefreshCw className="w-4 h-4 text-purple-400" />
-            Request Revision
-          </Button>
-
-          <Button variant="primary" onClick={onAccept} isLoading={isLoading}>
-            <CheckCircle2 className="w-4 h-4" />
-            Accept & Continue
-          </Button>
         </div>
       </div>
 
-      {/* Revision Modal / Form */}
+      {/* Assumptions & Open Questions */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+        <div
+          style={{
+            background: 'rgba(0, 0, 0, 0.25)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '18px',
+          }}
+        >
+          <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '10px' }}>
+            MARKET ASSUMPTIONS
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {assumptions.map((item: string, idx: number) => (
+              <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '11px', color: 'var(--muted)' }}>
+                <AlertCircle size={13} color="var(--subtle)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: 'rgba(0, 0, 0, 0.25)',
+            border: '1px solid var(--border)',
+            borderRadius: '14px',
+            padding: '18px',
+          }}
+        >
+          <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '10px' }}>
+            OPEN QUESTIONS
+          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {open_questions.map((item: string, idx: number) => (
+              <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '11px', color: 'var(--muted)' }}>
+                <HelpCircle size={13} color="var(--indigo)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Decision Controls */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingTop: '20px',
+          borderTop: '1px solid var(--border)',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
+        <p style={{ fontSize: '12px', color: 'var(--muted)', margin: 0 }}>
+          Accept foundations to proceed to Positioning, or request a targeted rerun.
+        </p>
+
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button
+            type="button"
+            className="button button-outline"
+            onClick={() => setShowRevisionInput(!showRevisionInput)}
+            disabled={isLoading}
+          >
+            <RefreshCw size={14} color="#b4a5ff" /> Request revision
+          </button>
+
+          <button
+            type="button"
+            className="button button-primary"
+            onClick={onAccept}
+            disabled={isLoading}
+          >
+            Accept & Continue <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
+
       {showRevisionInput && (
-        <form onSubmit={handleRevisionSubmit} className="p-4 bg-purple-950/40 border border-purple-500/30 rounded-xl space-y-3">
-          <label className="block text-xs font-medium text-purple-200">
-            Provide feedback for Discoverer Agent:
+        <form
+          onSubmit={handleRevisionSubmit}
+          style={{
+            background: 'linear-gradient(135deg, rgba(124, 92, 255, 0.12), rgba(18, 19, 25, 0.9))',
+            border: '1px solid rgba(124, 92, 255, 0.35)',
+            borderRadius: '14px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+          }}
+        >
+          <label style={{ font: '10px monospace', color: '#b4a5ff', letterSpacing: '0.1em' }}>
+            PROVIDE FEEDBACK FOR DISCOVERER AGENT:
           </label>
           <textarea
-            className="w-full bg-[#080c14] border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-purple-500"
             rows={3}
-            placeholder="e.g. Focus more on B2B enterprise creators rather than general consumer users..."
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
+            placeholder="e.g. Focus more on B2B engineering platforms rather than general consumers..."
+            style={{
+              background: 'rgba(0, 0, 0, 0.4)',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              padding: '12px',
+              color: '#fff',
+              fontSize: '12px',
+              outline: 'none',
+            }}
           />
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" type="button" onClick={() => setShowRevisionInput(false)}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button
+              type="button"
+              className="button button-ghost"
+              onClick={() => setShowRevisionInput(false)}
+            >
               Cancel
-            </Button>
-            <Button variant="primary" size="sm" type="submit">
+            </button>
+            <button type="submit" className="button button-primary">
               Submit Revision Rerun
-            </Button>
+            </button>
           </div>
         </form>
       )}

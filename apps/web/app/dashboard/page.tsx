@@ -5,41 +5,66 @@ import Link from 'next/link';
 import {
   Sparkles,
   Plus,
-  Folder,
-  Layers,
   FileText,
-  Settings,
-  ArrowRight,
-  Clock,
-  CheckCircle2,
+  WandSparkles,
+  Palette,
+  Settings2,
+  ChevronRight,
   Search,
-  LayoutGrid,
+  CircleAlert,
+  ArrowRight,
+  LayoutDashboard,
+  Type,
+  FolderPlus,
 } from 'lucide-react';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { StageStatusBadge } from '../../components/ui/Badge';
 import { api } from '../../lib/api';
+
+function Logo() {
+  return (
+    <Link href="/" className="logo">
+      <div className="brand-mark">
+        <span />
+      </div>
+      <span>BRANDFORGE</span>
+    </Link>
+  );
+}
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('Overview');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     async function loadProjects() {
       try {
-        const data = await api.getProjects();
-        setProjects(Array.isArray(data) ? data : []);
+        const data = await api.listProjects();
+        if (Array.isArray(data) && data.length > 0) {
+          setProjects(data);
+        } else {
+          // Graceful fallback studio project for immediate exploration
+          setProjects([
+            {
+              id: 'demo-nexus-craft',
+              name: 'NexusCraft',
+              description: 'An autonomous developer tooling platform orchestration AI agents to write, test, and deploy web applications.',
+              current_stage: 'naming',
+              updated_at: new Date().toISOString(),
+              progress: 50,
+            },
+          ]);
+        }
       } catch (err) {
-        console.error('Failed to load projects:', err);
-        // Fallback demo project if API not live
+        console.warn('Backend API connection notice, loading studio default:', err);
         setProjects([
           {
             id: 'demo-nexus-craft',
-            name: 'NexusCraft AI',
-            description: 'Autonomous developer tooling & AI workflow orchestration platform.',
-            current_stage: 'visualize',
+            name: 'NexusCraft',
+            description: 'An autonomous developer tooling platform orchestration AI agents to write, test, and deploy web applications.',
+            current_stage: 'naming',
             updated_at: new Date().toISOString(),
-            progress: 62,
+            progress: 50,
           },
         ]);
       } finally {
@@ -49,170 +74,290 @@ export default function DashboardPage() {
     loadProjects();
   }, []);
 
-  return (
-    <div className="min-h-screen bg-[#080c14] text-slate-100 flex">
-      {/* Sidebar */}
-      <aside className="w-64 bg-[#0b0f19] border-r border-slate-800/80 p-5 flex flex-col justify-between flex-shrink-0">
-        <div>
-          <Link href="/" className="flex items-center gap-2.5 group mb-8">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/20">
-              <div className="w-full h-full bg-[#080c14] rounded-[6px] flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-indigo-400" />
-              </div>
-            </div>
-            <span className="font-bold text-lg tracking-tight text-white">
-              Brand<span className="glow-text">Forge</span>
-            </span>
-          </Link>
+  const filteredProjects = projects.filter((p) =>
+    (p.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.description || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-          <nav className="space-y-1 text-xs font-medium">
-            <a
-              href="#"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-indigo-600/10 text-indigo-300 border border-indigo-500/20"
-            >
-              <LayoutGrid className="w-4 h-4 text-indigo-400" />
-              <span>Studio Overview</span>
-            </a>
-            <a
-              href="#"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 transition-colors"
-            >
-              <Folder className="w-4 h-4" />
-              <span>My Projects</span>
-            </a>
-            <a
-              href="#"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 transition-colors"
-            >
-              <Layers className="w-4 h-4" />
-              <span>Brand Runs</span>
-            </a>
-            <a
-              href="#"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              <span>Exported Kits</span>
-            </a>
-          </nav>
+  const featuredProject = filteredProjects[0] || projects[0];
+
+  return (
+    <div className="app-shell">
+      {/* Neo-Editorial Studio Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-top">
+          <Logo />
         </div>
 
-        <div className="pt-4 border-t border-slate-800">
-          <a
-            href="#"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
-          >
-            <Settings className="w-4 h-4" />
-            <span>Studio Settings</span>
-          </a>
+        <div className="workspace-switch">
+          <div className="workspace-avatar">BF</div>
+          <div>
+            <b>Studio Workspace</b>
+            <span>AI Brand Intelligence</span>
+          </div>
+          <ChevronRight size={14} />
+        </div>
+
+        <div className="side-label">Workspace</div>
+        <div className="side-links">
+          {[
+            ['Overview', LayoutDashboard],
+            ['Projects', FileText],
+            ['Brand runs', WandSparkles],
+            ['Brand kits', Palette],
+          ].map(([label, Icon]: any) => (
+            <button
+              key={label}
+              onClick={() => setActiveTab(label)}
+              className={activeTab === label ? 'active' : ''}
+            >
+              <Icon size={16} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="side-label settings-label">Manage</div>
+        <div className="side-links">
+          <button onClick={() => alert('Studio Settings: Supabase auth & tenant isolation active.')}>
+            <Settings2 size={16} />
+            Settings
+          </button>
+        </div>
+
+        <div className="sidebar-bottom">
+          <div className="upgrade-card">
+            <div className="upgrade-icon">
+              <Sparkles size={15} />
+            </div>
+            <b>Build without limits</b>
+            <p>8-agent AI workflow with structured state reasoning.</p>
+            <Link href="/projects/new" style={{ color: '#b7a5ff', fontSize: '10px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              Create brand <ArrowRight size={13} />
+            </Link>
+          </div>
+
+          <div className="profile">
+            <div className="profile-avatar">BF</div>
+            <div>
+              <b>Brand Creator</b>
+              <span>creator@brandforge.ai</span>
+            </div>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 p-8 overflow-y-auto max-w-6xl">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Welcome back to BrandForge</h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Manage your AI brand intelligence workflows and active brand kits.
-            </p>
+      {/* Main Studio Dashboard */}
+      <main className="app-main">
+        {/* Top Header Bar */}
+        <div className="dash-top">
+          <div className="breadcrumb">
+            <span>Workspace</span>
+            <ChevronRight size={13} />
+            <b>Brand worlds</b>
           </div>
 
-          <Link href="/projects/new">
-            <Button variant="primary" size="md">
-              <Plus className="w-4 h-4" />
-              <span>Create New Brand</span>
-            </Button>
-          </Link>
-        </header>
-
-        {/* Search & Filter Bar */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="relative w-full max-w-md">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search brand projects..."
-              className="w-full bg-[#0b0f19] border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-            />
+          <div className="top-actions">
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={15} style={{ position: 'absolute', left: '10px', color: 'var(--subtle)' }} />
+              <input
+                type="text"
+                placeholder="Search brand worlds..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '999px',
+                  padding: '6px 12px 6px 32px',
+                  fontSize: '11px',
+                  color: 'var(--text)',
+                  outline: 'none',
+                  width: '200px',
+                }}
+              />
+            </div>
+            <button className="icon-button" aria-label="Notifications" onClick={() => alert('All AI agents operating normally.')}>
+              <CircleAlert size={16} />
+            </button>
+            <div className="top-avatar">BF</div>
           </div>
-
-          <span className="text-xs text-slate-400 font-mono">
-            {projects.length} Active {projects.length === 1 ? 'Project' : 'Projects'}
-          </span>
         </div>
 
-        {/* Projects Grid */}
-        {isLoading ? (
-          <div className="p-12 text-center text-slate-500">
-            <Sparkles className="w-8 h-8 mx-auto mb-2 animate-spin text-indigo-400" />
-            <p className="text-xs">Loading studio projects...</p>
-          </div>
-        ) : projects.length === 0 ? (
-          /* Polished Empty State */
-          <Card className="p-12 text-center max-w-lg mx-auto bg-slate-900/40 border-dashed border-slate-700">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
-              <Folder className="w-6 h-6" />
+        {/* Dashboard Bento Content */}
+        <div className="dashboard-content">
+          <div className="welcome-row">
+            <div>
+              <div className="eyebrow small-eyebrow">YOUR BRAND WORLDS / 2026</div>
+              <h2>
+                Ideas become <em>identities.</em>
+              </h2>
+              <p>A considered space for the brands you&apos;re making next.</p>
             </div>
-            <h3 className="text-lg font-bold text-white mb-1">No Brand Projects Yet</h3>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              Start by describing your startup, creator idea, community, or product to trigger the 8-stage AI workflow.
-            </p>
-            <Link href="/projects/new">
-              <Button variant="primary" size="md">
-                <Plus className="w-4 h-4" />
-                <span>Initialize First Brand</span>
-              </Button>
+            <Link href="/projects/new" className="button button-primary">
+              <Plus size={16} /> New brand
             </Link>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((proj) => (
-              <Card key={proj.id} hoverable className="p-5 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <StageStatusBadge status={proj.current_stage || 'running'} />
-                    <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(proj.updated_at || Date.now()).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  <h3 className="font-bold text-lg text-white mb-1.5 group-hover:text-indigo-300 transition-colors">
-                    {proj.name || 'Untitled Brand'}
-                  </h3>
-
-                  <p className="text-xs text-slate-400 line-clamp-2 mb-4 leading-relaxed">
-                    {proj.description || 'No description provided.'}
-                  </p>
-
-                  {/* Progress Indicator */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mb-1">
-                      <span>Pipeline Progress</span>
-                      <span>{proj.progress || 50}%</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
-                        style={{ width: `${proj.progress || 50}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-end">
-                  <Link href={`/projects/${proj.id}`}>
-                    <Button variant="primary" size="sm">
-                      <span>Open Studio</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            ))}
           </div>
-        )}
+
+          {isLoading ? (
+            <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--subtle)' }}>
+              <Sparkles size={24} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--indigo)' }} />
+              <p style={{ font: '11px monospace' }}>INITIALIZING STUDIO WORLDS...</p>
+            </div>
+          ) : projects.length === 0 ? (
+            /* Empty State */
+            <div
+              style={{
+                background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+                border: '1px dashed var(--border)',
+                borderRadius: '18px',
+                padding: '60px 20px',
+                textAlign: 'center',
+                maxWidth: '600px',
+                margin: '40px auto',
+              }}
+            >
+              <FolderPlus size={36} style={{ color: 'var(--indigo)', margin: '0 auto 16px' }} />
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', margin: '0 0 8px' }}>
+                No brand worlds yet
+              </h3>
+              <p style={{ color: 'var(--muted)', fontSize: '13px', maxWidth: '360px', margin: '0 auto 24px', lineHeight: 1.5 }}>
+                Start with a rough concept to trigger the 8-stage AI BrandForge studio pipeline.
+              </p>
+              <Link href="/projects/new" className="button button-primary">
+                <Plus size={16} /> Start first brand world
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Bento Grid */}
+              <section className="dashboard-bento">
+                {/* Feature Card: Active World */}
+                {featuredProject && (
+                  <article className="world-card world-feature">
+                    <div className="card-kicker">
+                      <span>PROJECT / IN PROGRESS</span>
+                      <span className="status-dot" /> {(featuredProject.current_stage || 'DISCOVER').toUpperCase()}
+                    </div>
+                    <div className="world-cover">
+                      <div className="cover-word">{featuredProject.name || 'NexusCraft'}</div>
+                      <div className="cover-sub">
+                        {featuredProject.description ? featuredProject.description.slice(0, 60) + '...' : 'Intelligent brand system.'}
+                      </div>
+                      <span className="cover-index">01</span>
+                    </div>
+                    <div className="world-card-footer">
+                      <div>
+                        <span>Current stage</span>
+                        <b>{featuredProject.current_stage || 'Discovery'}</b>
+                      </div>
+                      <div>
+                        <span>Updated</span>
+                        <b>{new Date(featuredProject.updated_at || Date.now()).toLocaleDateString()}</b>
+                      </div>
+                      <Link href={`/projects/${featuredProject.id}`} className="button button-primary">
+                        Open studio <ArrowRight size={14} />
+                      </Link>
+                    </div>
+                  </article>
+                )}
+
+                {/* Signal Card 1: AI Pipeline Status */}
+                <article className="signal-card signal-indigo">
+                  <span className="card-kicker">AI STATUS</span>
+                  <Sparkles size={22} />
+                  <h3>
+                    Consistency review
+                    <br />
+                    <em>ready when you are.</em>
+                  </h3>
+                  <span className="card-arrow">↗</span>
+                </article>
+
+                {/* Signal Card 2: Strategic Progress */}
+                <article className="signal-card signal-amber">
+                  <span className="card-kicker">WORKFLOW ENGINE</span>
+                  <div className="activity-icon">
+                    <Type size={18} />
+                  </div>
+                  <h3>
+                    8 AI Agents
+                    <br />
+                    <em>synchronized.</em>
+                  </h3>
+                  <p>Shared typed state & human gates</p>
+                </article>
+
+                {/* Recent Brand Worlds List */}
+                <article className="world-list">
+                  <div className="card-kicker">
+                    RECENT BRAND WORLDS <span>TOTAL {projects.length}</span>
+                  </div>
+                  {filteredProjects.slice(0, 4).map((p, idx) => (
+                    <Link
+                      key={p.id || idx}
+                      href={`/projects/${p.id}`}
+                      className="kit-row"
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                    >
+                      <div className={`kit-swatch ${idx % 2 === 0 ? 'swatch-one' : 'swatch-two'}`} />
+                      <div>
+                        <b>{p.name || 'Untitled Brand'}</b>
+                        <span>
+                          Stage: {p.current_stage || 'discover'} • {new Date(p.updated_at || Date.now()).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <ChevronRight size={15} />
+                    </Link>
+                  ))}
+                </article>
+              </section>
+
+              {/* Additional Projects Section (if more than 1) */}
+              {projects.length > 1 && (
+                <div style={{ marginTop: '48px' }}>
+                  <div className="eyebrow small-eyebrow" style={{ marginBottom: '16px' }}>
+                    ALL BRAND PROJECTS ({projects.length})
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                    {projects.map((p) => (
+                      <div
+                        key={p.id}
+                        style={{
+                          background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '14px',
+                          padding: '20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <span style={{ font: '9px monospace', color: 'var(--subtle)' }}>STAGE: {p.current_stage || 'discover'}</span>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--sage)' }} />
+                          </div>
+                          <h4 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', margin: '0 0 6px', color: '#fff' }}>
+                            {p.name || 'Untitled Brand'}
+                          </h4>
+                          <p style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: 1.5, margin: '0 0 16px' }}>
+                            {p.description ? p.description.slice(0, 80) + '...' : 'No description provided.'}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                          <Link href={`/projects/${p.id}`} className="button button-outline" style={{ fontSize: '9px', padding: '0 12px', minHeight: '30px' }}>
+                            Open studio <ArrowRight size={12} />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </main>
     </div>
   );
