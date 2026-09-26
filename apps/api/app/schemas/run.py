@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 
 
 class RunCreate(BaseModel):
-    provider: Optional[str] = Field("openai", description="Configured AI model provider")
+    provider: Optional[str] = Field("gemini", description="Configured AI model provider")
 
 
 class RunResponse(BaseModel):

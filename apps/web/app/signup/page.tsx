@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Lock, Mail, ShieldCheck, AlertCircle } from 'lucide-react';
+import { ArrowRight, Lock, Mail, User, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useAuth, formatAuthErrorMessage } from '../../lib/auth-context';
 import { GuestOnlyRoute } from '../../lib/auth-guard';
 
@@ -18,51 +18,60 @@ function Logo() {
   );
 }
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
+
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!email.trim() || !password) {
-      setErrorMsg('Please enter both your email address and password.');
+    // Form Validations
+    if (!name.trim()) {
+      setErrorMsg('Please enter your full name or studio handle.');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMsg('Please enter a valid work email address.');
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMsg('Password must be at least 8 characters long.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMsg('Passwords do not match. Please verify.');
       return;
     }
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
-      const { data, error } = await signIn(email.trim(), password);
+      const { data, error } = await signUp(name.trim(), email.trim(), password);
 
       if (error) {
-        const errorText = error.message || '';
-        const lower = errorText.toLowerCase();
-        // If unverified user tries to sign in
-        if (
-          lower.includes('not confirmed') ||
-          lower.includes('unconfirmed') ||
-          lower.includes('email verification') ||
-          lower.includes('confirm your email')
-        ) {
-          router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
-          return;
-        }
-
         setErrorMsg(formatAuthErrorMessage(error));
-        setIsLoading(false);
+        setIsSubmitting(false);
         return;
       }
 
-      // Successful login -> go to dashboard
-      router.push('/dashboard');
+      // Check if session was returned directly (e.g. if email confirmation is disabled)
+      if (data?.session) {
+        router.push('/dashboard');
+        return;
+      }
+
+      // Otherwise, confirmation code was sent to email -> navigate to verify-email
+      router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err: any) {
       setErrorMsg(formatAuthErrorMessage(err));
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -79,23 +88,23 @@ export default function LoginPage() {
           padding: '24px',
         }}
       >
-        <div style={{ width: '100%', maxWidth: '420px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
+        <div style={{ width: '100%', maxWidth: '440px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
           <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
             <Logo />
             <div>
               <div className="eyebrow" style={{ justifyContent: 'center', marginBottom: '8px' }}>
-                <span className="eyebrow-line" /> STUDIO ACCESS
+                <span className="eyebrow-line" /> FOUNDER ONBOARDING
               </div>
               <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', margin: 0, fontWeight: 500, letterSpacing: '-0.04em' }}>
-                Sign in to BrandForge
+                Create your studio account
               </h1>
               <p style={{ color: 'var(--muted)', fontSize: '12px', marginTop: '6px' }}>
-                Enter your studio credentials to access active brand worlds.
+                Join BrandForge to turn rough concepts into launch-ready brand identities.
               </p>
             </div>
           </div>
 
-          {/* Login Card */}
+          {/* Signup Card */}
           <div
             style={{
               background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
@@ -128,16 +137,16 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '6px' }}>
-                  WORK EMAIL ADDRESS
+                  YOUR NAME / STUDIO NAME
                 </label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <Mail size={15} style={{ position: 'absolute', left: '12px', color: 'var(--subtle)' }} />
+                  <User size={15} style={{ position: 'absolute', left: '12px', color: 'var(--subtle)' }} />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@company.com"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Alex Vance"
                     style={{
                       width: '100%',
                       background: 'rgba(0,0,0,0.4)',
@@ -153,14 +162,35 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em' }}>
-                    PASSWORD
-                  </label>
-                  <span style={{ fontSize: '10px', color: 'var(--subtle)' }}>
-                    Secure Supabase Auth
-                  </span>
+                <label style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '6px' }}>
+                  WORK EMAIL ADDRESS
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Mail size={15} style={{ position: 'absolute', left: '12px', color: 'var(--subtle)' }} />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="alex@studio.ai"
+                    style={{
+                      width: '100%',
+                      background: 'rgba(0,0,0,0.4)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px 14px 10px 36px',
+                      color: '#fff',
+                      fontSize: '12px',
+                      outline: 'none',
+                    }}
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '6px' }}>
+                  PASSWORD (MIN 8 CHARS)
+                </label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <Lock size={15} style={{ position: 'absolute', left: '12px', color: 'var(--subtle)' }} />
                   <input
@@ -183,36 +213,62 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div>
+                <label style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '6px' }}>
+                  CONFIRM PASSWORD
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Lock size={15} style={{ position: 'absolute', left: '12px', color: 'var(--subtle)' }} />
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    style={{
+                      width: '100%',
+                      background: 'rgba(0,0,0,0.4)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '10px 14px 10px 36px',
+                      color: '#fff',
+                      fontSize: '12px',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="button button-primary"
                 style={{ width: '100%', marginTop: '8px' }}
               >
-                {isLoading ? 'Authenticating with Supabase...' : 'Sign In to Studio'} <ArrowRight size={14} />
+                {isSubmitting ? 'Creating studio account...' : 'Create Studio Account'} <ArrowRight size={14} />
               </button>
             </form>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '22px 0' }}>
               <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
               <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.1em' }}>
-                NEW TO BRANDFORGE?
+                ALREADY HAVE AN ACCOUNT?
               </span>
               <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
             </div>
 
             <Link
-              href="/signup"
+              href="/login"
               className="button button-outline"
               style={{ width: '100%', textDecoration: 'none', display: 'flex', justifyContent: 'center' }}
             >
-              Create a Studio Account
+              Sign In Instead
             </Link>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--subtle)', fontSize: '11px' }}>
             <ShieldCheck size={14} color="var(--sage)" />
-            <span>Protected by Supabase Auth with RLS tenant isolation.</span>
+            <span>Encrypted with Supabase Auth & PostgreSQL Row-Level Security.</span>
           </div>
         </div>
       </div>

@@ -19,7 +19,9 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
   const selectedName =
     brandState.selected_directions?.chosen_name ||
     brandState.naming?.suggestions?.[0]?.name ||
-    'NexusCraft';
+    brandState.naming?.territories?.[0]?.names?.[0]?.name ||
+    brandState.name ||
+    'BrandForge';
   const tagline = launchData?.tagline || 'From rough idea to launch-ready brand.';
   const pitch =
     launchData?.one_line_pitch ||

@@ -4,6 +4,7 @@ import sys
 
 # Add root directory to python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+os.environ["AI_PROVIDER"] = "mock"
 
 from fastapi.testclient import TestClient
 from apps.api.main import app

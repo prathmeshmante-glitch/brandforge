@@ -28,6 +28,8 @@ export const viewport: Viewport = {
   themeColor: '#0A0A0C',
 };
 
+import { AuthProvider } from '../lib/auth-context';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -36,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className="antialiased bg-[#0a0a0c] text-[#f5f5f7]">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

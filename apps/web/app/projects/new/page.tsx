@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, ArrowRight, ArrowLeft } from 'lucide-react';
 import { api } from '../../../lib/api';
+import { ProtectedRoute } from '../../../lib/auth-guard';
 
 function Logo() {
   return (
@@ -83,7 +84,8 @@ export default function NewBrandPage() {
   };
 
   return (
-    <div className="new-brand-shell">
+    <ProtectedRoute>
+      <div className="new-brand-shell">
       {/* Simple Header */}
       <header className="simple-header">
         <Link href="/dashboard" className="back-button" style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
@@ -215,5 +217,6 @@ export default function NewBrandPage() {
         </div>
       </div>
     </div>
+    </ProtectedRoute>
   );
 }

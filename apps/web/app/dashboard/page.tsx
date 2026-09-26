@@ -16,8 +16,11 @@ import {
   LayoutDashboard,
   Type,
   FolderPlus,
+  LogOut,
 } from 'lucide-react';
 import { api } from '../../lib/api';
+import { useAuth } from '../../lib/auth-context';
+import { ProtectedRoute } from '../../lib/auth-guard';
 
 function Logo() {
   return (
@@ -31,6 +34,7 @@ function Logo() {
 }
 
 export default function DashboardPage() {
+  const { user, profile, signOut } = useAuth();
   const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Overview');
@@ -40,33 +44,14 @@ export default function DashboardPage() {
     async function loadProjects() {
       try {
         const data = await api.listProjects();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setProjects(data);
         } else {
-          // Graceful fallback studio project for immediate exploration
-          setProjects([
-            {
-              id: 'demo-nexus-craft',
-              name: 'NexusCraft',
-              description: 'An autonomous developer tooling platform orchestration AI agents to write, test, and deploy web applications.',
-              current_stage: 'naming',
-              updated_at: new Date().toISOString(),
-              progress: 50,
-            },
-          ]);
+          setProjects([]);
         }
       } catch (err) {
-        console.warn('Backend API connection notice, loading studio default:', err);
-        setProjects([
-          {
-            id: 'demo-nexus-craft',
-            name: 'NexusCraft',
-            description: 'An autonomous developer tooling platform orchestration AI agents to write, test, and deploy web applications.',
-            current_stage: 'naming',
-            updated_at: new Date().toISOString(),
-            progress: 50,
-          },
-        ]);
+        console.warn('Backend API connection notice:', err);
+        setProjects([]);
       } finally {
         setIsLoading(false);
       }
@@ -82,7 +67,8 @@ export default function DashboardPage() {
   const featuredProject = filteredProjects[0] || projects[0];
 
   return (
-    <div className="app-shell">
+    <ProtectedRoute>
+      <div className="app-shell">
       {/* Neo-Editorial Studio Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -137,12 +123,36 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="profile">
-            <div className="profile-avatar">BF</div>
-            <div>
-              <b>Brand Creator</b>
-              <span>creator@brandforge.ai</span>
+          <div className="profile" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0, flex: 1 }}>
+              <div className="profile-avatar">
+                {(profile?.name || user?.user_metadata?.full_name || user?.email || 'BF').slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                <b style={{ display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {profile?.name || user?.user_metadata?.full_name || 'Studio Member'}
+                </b>
+                <span style={{ display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  {profile?.email || user?.email || 'studio@brandforge.ai'}
+                </span>
+              </div>
             </div>
+            <button
+              onClick={() => signOut()}
+              title="Sign out of studio"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--subtle)',
+                cursor: 'pointer',
+                padding: '6px',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <LogOut size={14} />
+            </button>
           </div>
         </div>
       </aside>
@@ -360,5 +370,6 @@ export default function DashboardPage() {
         </div>
       </main>
     </div>
+    </ProtectedRoute>
   );
 }

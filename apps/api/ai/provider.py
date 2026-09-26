@@ -178,7 +178,8 @@ class MockAIProvider(BaseAIProvider):
 class OpenAIProvider(BaseAIProvider):
     """OpenAI provider implementation."""
     def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        from apps.api.app.core.config import settings
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", "")
         self.model_name = model_name or os.getenv("AI_MODEL", "gpt-4o")
 
     def generate_structured(self, prompt: str, system_prompt: str, response_model: Type[BaseModel]) -> BaseModel:
@@ -215,20 +216,82 @@ class AnthropicProvider(BaseAIProvider):
 
 
 class GeminiProvider(BaseAIProvider):
-    """Google Gemini provider implementation."""
+    """Google Gemini provider implementation using modern google-genai SDK."""
     def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model_name = model_name or "gemini-1.5-pro"
+        from apps.api.app.core.config import settings
+        if api_key is not None:
+            self.api_key = api_key
+        else:
+            self.api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "")
+        self.model_name = model_name or os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is not configured.")
 
     def generate_structured(self, prompt: str, system_prompt: str, response_model: Type[BaseModel]) -> BaseModel:
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY environment variable is not configured.")
-        raise NotImplementedError("Gemini provider SDK integration is pending. Use AI_PROVIDER=openai or AI_PROVIDER=mock.")
+        
+        from google import genai
+        from google.genai import types
+        import time
+
+        client = genai.Client(api_key=self.api_key)
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            response_mime_type="application/json",
+            response_schema=response_model,
+        )
+
+        last_error = None
+        for attempt in range(5):
+            try:
+                response = client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=config,
+                )
+                if response.parsed is not None and isinstance(response.parsed, response_model):
+                    return response.parsed
+                
+                # Fallback parsing in case response.parsed is dict or text
+                if response.text:
+                    import json
+                    clean_text = response.text.strip()
+                    if clean_text.startswith("```json"):
+                        clean_text = clean_text[7:]
+                    if clean_text.startswith("```"):
+                        clean_text = clean_text[3:]
+                    if clean_text.endswith("```"):
+                        clean_text = clean_text[:-3]
+                    data = json.loads(clean_text.strip())
+                    return response_model.model_validate(data)
+                
+                raise ValueError("Gemini returned empty structured response.")
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                logger.warning(f"Gemini attempt {attempt + 1} failed: {type(e).__name__} - {err_str[:120]}. Retrying...")
+                
+                # Check for rate limit / quota exhaustion
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    wait_sec = 35.0
+                    import re
+                    match = re.search(r"retry in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
+                    if match:
+                        wait_sec = float(match.group(1)) + 1.5
+                    logger.info(f"Gemini rate limit encountered. Waiting {wait_sec:.1f}s before retry {attempt + 2}...")
+                    time.sleep(wait_sec)
+                else:
+                    time.sleep(1.5 * (attempt + 1))
+
+        logger.error(f"Gemini Execution Error - Provider: gemini, Model: {self.model_name}, ErrorType: {type(last_error).__name__}")
+        raise RuntimeError(f"Gemini API Failure ({type(last_error).__name__}): {str(last_error)}")
 
 
 def get_ai_provider(provider_name: Optional[str] = None) -> BaseAIProvider:
     """Factory function to retrieve the configured AI Provider."""
-    provider = (provider_name or os.getenv("AI_PROVIDER", "mock")).lower()
+    from apps.api.app.core.config import settings
+    provider = (provider_name or os.getenv("AI_PROVIDER") or getattr(settings, "AI_PROVIDER", "gemini")).lower()
     if provider == "mock":
         return MockAIProvider()
     elif provider == "openai":

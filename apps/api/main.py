@@ -12,7 +12,8 @@ from apps.api.app.api.runs import router as runs_router
 from apps.api.app.api.workflows import router as workflows_router
 from apps.api.app.api.selections import router as selections_router
 from apps.api.app.api.artifacts import router as artifacts_router
-from apps.api.app.api.exports import router as exports_router
+from apps.api.app.api.exports import router as exports_router, download_router as exports_download_router
+from apps.api.app.api.chat import router as chat_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -36,6 +37,8 @@ app.include_router(workflows_router)
 app.include_router(selections_router)
 app.include_router(artifacts_router)
 app.include_router(exports_router)
+app.include_router(exports_download_router)
+app.include_router(chat_router)
 
 
 @app.get("/", tags=["Health"])

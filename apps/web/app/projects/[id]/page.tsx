@@ -20,6 +20,7 @@ import {
   Layers3,
   Rocket,
   RefreshCw,
+  Play,
 } from 'lucide-react';
 
 import { DiscoveryView } from '../../../components/stage-views/DiscoveryView';
@@ -30,7 +31,9 @@ import { VisualIdentityView } from '../../../components/stage-views/VisualIdenti
 import { BrandBattleView } from '../../../components/stage-views/BrandBattleView';
 import { ConsistencyView } from '../../../components/stage-views/ConsistencyView';
 import { LaunchBrandKitView } from '../../../components/stage-views/LaunchBrandKitView';
+import { BrandChatDrawer } from '../../../components/studio/BrandChatDrawer';
 import { api } from '../../../lib/api';
+import { ProtectedRoute } from '../../../lib/auth-guard';
 
 const STAGES = [
   { id: 'discover', number: '01', name: 'Discover', agent: 'Discoverer', icon: Compass, title: 'Understand the real problem.', caption: 'Understanding the real problem' },
@@ -45,180 +48,70 @@ const STAGES = [
 
 export default function ProjectStudioPage() {
   const params = useParams();
-  const router = useRouter();
-  const projectId = (params?.id as string) || 'demo-nexus-craft';
+  const projectId = (params?.id as string) || '';
 
   const [project, setProject] = useState<any>(null);
-  const [activeStageId, setActiveStageId] = useState<string>('naming');
-  const [brandState, setBrandState] = useState<any>({
-    discovery: {
-      core_problem: 'Developers and founders waste critical velocity wrestling with disjointed AI wrapper scripts.',
-      target_audience: 'Senior Full-Stack Engineers & Autonomous AI Founders.',
-      user_context: 'Fast-paced production environments utilizing monorepos and type-safe systems.',
-      goals: ['Establish technical authority', 'Accelerate brand launch', 'Achieve viral Github adoption'],
-      assumptions: ['High demand for typed agent orchestration', 'Preference for dark obsidian editorial UX'],
-      open_questions: ['What pricing tier structure fits devtool adoption?'],
-    },
-    positioning: {
-      directions: [
-        {
-          name: 'Progressive Utility',
-          positioning_statement: 'The premier autonomous AI brand intelligence studio engineered for high-velocity software creators.',
-          core_problem: 'Fragmented AI wrappers produce generic, inconsistent brand output.',
-          value_proposition: 'End-to-end 8-stage typed reasoning from napkin sketch to verified guidelines.',
-          differentiator: 'Strict structured outputs & LangGraph execution with human decision gates.',
-          competitive_angle: 'Zero black-box mystery.',
-          proof_points: ['100% typed Pydantic state', 'Deterministic error recovery'],
-        },
-        {
-          name: 'Developer Velocity Platform',
-          positioning_statement: 'Accelerating product launch by 10x with intelligent agent orchestration.',
-          core_problem: 'Repetitive boilerplate and indecision drain launch momentum.',
-          value_proposition: 'High-speed automated brand synthesis with cross-stage consistency audit.',
-          differentiator: 'Seamless local IDE and API integration.',
-          competitive_angle: 'Engineered for serious builders.',
-          proof_points: ['Instant CLI triggers', 'Multi-model fallback support'],
-        },
-      ],
-    },
-    personality: {
-      archetype: 'Creator / Visionary',
-      traits: ['Technical', 'Authoritative', 'Minimalist', 'Precision-Driven'],
-      tone: ['Direct', 'Architectural', 'Refined', 'Confident'],
-      emotional_goal: 'Empowered engineering clarity and trust',
-      brand_principles: ['Code over fluff', 'Architectural transparency', 'Zero generic filler'],
-      avoid_traits: ['Hype-heavy AI marketing', 'Childish graphics', 'Corporate bureaucracy'],
-    },
-    naming: {
-      territories: ['Progressive Utility', 'Human Connection', 'Care & Craft'],
-      suggestions: [
-        {
-          name: 'Morrow',
-          territory: 'Progressive Utility',
-          rationale: 'A warm, forward-looking name that signals a better tomorrow without feeling overly literal.',
-          strengths: ['Memorable', 'Optimistic'],
-          risks: ['Slightly soft for a pure devtool position'],
-          domain_assessment: 'Available (.studio, .dev)',
-          trademark_assessment: 'Clear in Class 42',
-        },
-        {
-          name: 'NexusCraft',
-          territory: 'Care & Craft',
-          rationale: 'Combines network nexus point with precision engineering craftsmanship.',
-          strengths: ['High memorability', 'Reflects structural intelligence'],
-          risks: ['Nexus is used across broader SaaS categories'],
-          domain_assessment: 'Medium Risk (.io active)',
-          trademark_assessment: 'Clear in Class 42',
-        },
-        {
-          name: 'BrandForge',
-          territory: 'Progressive Utility',
-          rationale: 'Evokes industrial-strength craftsmanship for brand intelligence systems.',
-          strengths: ['Action-oriented', 'Strong visual metaphor'],
-          risks: ['Forge requires strong visual grounding'],
-          domain_assessment: 'Available (.ai, .so)',
-          trademark_assessment: 'Clear in Class 42',
-        },
-      ],
-    },
-    visual_direction: {
-      visual_mood: 'Neo-Editorial Dark Obsidian & High-Tech Precision',
-      color_palette: [
-        { hex: '#0a0a0c', name: 'Dark Obsidian', role: 'Canvas', usage: 'Primary app canvas' },
-        { hex: '#7c5cff', name: 'Electric Indigo', role: 'Primary Accent', usage: 'CTAs, focus rings, and active states' },
-        { hex: '#f5a524', name: 'Amber Signal', role: 'Review Accent', usage: 'Human decision review signals' },
-        { hex: '#7ccb9a', name: 'Sage Verification', role: 'Pass Accent', usage: 'Verified consistency checks' },
-      ],
-      typography: {
-        header_font: 'Editorial Serif (Georgia / Canela)',
-        body_font: 'Inter Sans / Modern System UI',
-      },
-      composition: 'Clean bento grid alignment with generous dark whitespace.',
-      shape_language: 'Precision rounded corners (14px) with subtle 1px translucent borders.',
-      logo_direction: 'Diamond 45-degree spark mark with refined wordmark.',
-    },
-    critique: {
-      overall_assessment: 'Strong positioning with high audience fit and distinctive naming territories.',
-      genericity_score: 'Low (2/10)',
-      audience_fit: 'High (9/10)',
-      differentiation_rating: 'Strong',
-      positioning_strength: 'Solid',
-      personality_consistency: 'Consistent',
-      visual_strategy_fit: 'High',
-      critique_items: [
-        {
-          category: 'Naming Nuance',
-          severity: 'Medium',
-          finding: 'Morrow suffix may feel slightly soft for a developer infrastructure tool.',
-          explanation: 'Ensure landing page copy grounds the name in high-velocity technical capabilities.',
-        },
-        {
-          category: 'Differentiation Angle',
-          severity: 'Low',
-          finding: 'Target audience expects immediate technical benchmark validation.',
-          explanation: 'Highlight LangGraph state orchestration and deterministic schema checks.',
-        },
-      ],
-      key_weaknesses: ['Requires immediate developer benchmark data on landing page.'],
-      recommended_revisions: ['Emphasize structured AI reasoning rather than automated generation.'],
-    },
-    consistency: {
-      overall_consistency_score: 96,
-      checks: [
-        { relationship: 'Name ↔ Positioning', status: 'PASS', details: 'Selected name aligns with progressive utility positioning.' },
-        { relationship: 'Name ↔ Personality', status: 'PASS', details: 'Matches Creator/Visionary archetype.' },
-        { relationship: 'Tagline ↔ Personality', status: 'PASS', details: 'Direct, technical, and confident.' },
-        { relationship: 'Visual ↔ Audience', status: 'PASS', details: 'Dark obsidian aesthetic tailored to serious creators.' },
-        { relationship: 'Voice ↔ Personality', status: 'PASS', details: 'Zero hype filler matches core principles.' },
-        { relationship: 'Launch Message ↔ Strategy', status: 'PASS', details: 'Reflects core product value prop.' },
-      ],
-    },
-    launch: {
-      tagline: 'From rough idea to launch-ready brand.',
-      one_line_pitch: 'An AI brand intelligence studio for turning unstructured ideas into coherent, launch-ready brand systems.',
-      landing_page_copy: {
-        headline: 'From rough idea to launch-ready brand.',
-        subheadline: 'Turn an unstructured idea into a coherent brand system through structured AI reasoning, human decisions, critique, and consistency.',
-        cta: 'Start building',
-      },
-      social_posts: [
-        { platform: 'Twitter / X', content: 'Say goodbye to one-prompt AI wrappers. Introducing BrandForge — 8 specialized AI agents working together to forge your brand identity. 🚀' },
-        { platform: 'LinkedIn', content: 'We are thrilled to announce BrandForge: An AI Brand Intelligence Studio powered by structured LangGraph state and human decision gates.' },
-      ],
-    },
-    selected_directions: {
-      positioning_direction: 'Progressive Utility',
-      chosen_name: 'Morrow',
-    },
-  });
+  const [activeStageId, setActiveStageId] = useState<string>('discover');
+  const [brandState, setBrandState] = useState<any>({});
 
   const [stageStatuses, setStageStatuses] = useState<Record<string, 'pending' | 'running' | 'review' | 'complete'>>({
-    discover: 'complete',
-    position: 'complete',
-    persona: 'complete',
-    naming: 'review',
+    discover: 'pending',
+    position: 'pending',
+    persona: 'pending',
+    naming: 'pending',
     visualize: 'pending',
     critique: 'pending',
     consistency: 'pending',
     launch: 'pending',
   });
 
+  const [isStartingPipeline, setIsStartingPipeline] = useState<boolean>(false);
   const [revisionInfo, setRevisionInfo] = useState<{ targetStage: string; reason: string; isExecuting: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Load project details
+  // Load real project details & existing brand kit artifacts
   useEffect(() => {
     async function loadProjectData() {
+      if (!projectId) return;
       try {
         const proj = await api.getProject(projectId);
         setProject(proj);
+
+        try {
+          const kit = await api.getBrandKit(projectId);
+          if (kit && kit.artifacts && Object.keys(kit.artifacts).length > 0) {
+            const arts = kit.artifacts;
+            setBrandState({
+              ...arts,
+              visual_direction: arts.visual || arts.visual_direction,
+              selected_directions: {
+                chosen_name: kit.brand_name || arts.launch?.brand_name || '',
+                positioning_direction: arts.positioning?.directions?.[0]?.name || '',
+              },
+            });
+            const updatedStatuses: Record<string, 'pending' | 'running' | 'review' | 'complete'> = {
+              discover: arts.discovery ? 'complete' : 'pending',
+              position: arts.positioning ? 'complete' : 'pending',
+              persona: arts.personality ? 'complete' : 'pending',
+              naming: arts.naming ? 'complete' : 'pending',
+              visualize: arts.visual || arts.visual_direction ? 'complete' : 'pending',
+              critique: arts.critique ? 'complete' : 'pending',
+              consistency: arts.consistency ? 'complete' : 'pending',
+              launch: arts.launch ? 'complete' : 'pending',
+            };
+            setStageStatuses(updatedStatuses);
+            if (arts.launch) {
+              setActiveStageId('launch');
+            } else {
+              const nextStage = STAGES.find((s) => updatedStatuses[s.id] !== 'complete');
+              if (nextStage) setActiveStageId(nextStage.id);
+            }
+          }
+        } catch (kitErr) {
+          console.warn('No brand kit artifacts available yet for project:', kitErr);
+        }
       } catch (err) {
-        console.warn('Backend API connection notice, using studio state:', err);
-        setProject({
-          id: projectId,
-          name: 'Morrow',
-          description: 'Home care, made human. An app where customers can book verified home-cleaning professionals.',
-        });
+        console.error('Failed to load project details:', err);
       }
     }
     loadProjectData();
@@ -312,10 +205,68 @@ export default function ProjectStudioPage() {
 
     try {
       await api.requestRevision(projectId, { target_stage: targetStage, feedback });
+      const kit = await api.getBrandKit(projectId);
+      if (kit && kit.artifacts) {
+        const arts = kit.artifacts;
+        setBrandState((prev: any) => ({
+          ...prev,
+          ...arts,
+          visual_direction: arts.visual || arts.visual_direction,
+        }));
+      }
     } catch (e) {
       console.warn('Revision trigger notice:', e);
     } finally {
       setIsLoading(false);
+      setRevisionInfo(null);
+    }
+  };
+
+  // Pipeline Execution Action
+  const handleStartPipeline = async () => {
+    try {
+      setIsStartingPipeline(true);
+      setStageStatuses({
+        discover: 'running',
+        position: 'pending',
+        persona: 'pending',
+        naming: 'pending',
+        visualize: 'pending',
+        critique: 'pending',
+        consistency: 'pending',
+        launch: 'pending',
+      });
+      setActiveStageId('discover');
+
+      await api.startWorkflow(projectId);
+
+      const kit = await api.getBrandKit(projectId);
+      if (kit && kit.artifacts) {
+        const arts = kit.artifacts;
+        setBrandState({
+          ...arts,
+          visual_direction: arts.visual || arts.visual_direction,
+          selected_directions: {
+            chosen_name: kit.brand_name || arts.launch?.brand_name || '',
+            positioning_direction: arts.positioning?.directions?.[0]?.name || '',
+          },
+        });
+        setStageStatuses({
+          discover: 'complete',
+          position: 'complete',
+          persona: 'complete',
+          naming: 'complete',
+          visualize: 'complete',
+          critique: 'complete',
+          consistency: 'complete',
+          launch: 'complete',
+        });
+        setActiveStageId('launch');
+      }
+    } catch (err: any) {
+      alert(`Workflow execution notice: ${err.message || 'Workflow process encountered an issue'}`);
+    } finally {
+      setIsStartingPipeline(false);
     }
   };
 
@@ -340,31 +291,37 @@ export default function ProjectStudioPage() {
     }));
   };
 
-  // PDF Export Trigger
+  // Brand Kit Export Trigger
   const handleExportPDF = async () => {
     try {
       setIsLoading(true);
-      await api.exportBrandKit(projectId, 'pdf');
-      alert('Brand Kit PDF export initiated successfully!');
-    } catch (e) {
-      alert('Export trigger submitted. Check backend artifacts.');
+      const res = await api.exportBrandKit(projectId, 'json');
+      if (res?.download_url) {
+        window.open(`${api.getBaseUrl()}${res.download_url}`, '_blank');
+      } else {
+        alert('Brand Kit export generated successfully!');
+      }
+    } catch (e: any) {
+      alert(`Export notice: ${e.message || 'Check backend artifacts'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const currentStageIndex = STAGES.findIndex((s) => s.id === activeStageId);
-  const activeStage = STAGES[currentStageIndex] || STAGES[3];
+  const activeStage = STAGES[currentStageIndex] || STAGES[0];
   const completedCount = Object.values(stageStatuses).filter((s) => s === 'complete').length;
   const progressPercent = Math.round((completedCount / STAGES.length) * 100);
 
   const selectedName =
     brandState.selected_directions?.chosen_name ||
+    brandState.launch?.brand_name ||
     project?.name ||
-    'Morrow';
+    'New Brand';
 
   return (
-    <div className="studio-shell">
+    <ProtectedRoute>
+      <div className="studio-shell">
       {/* Studio Header */}
       <header className="studio-header">
         <div className="studio-brand">
@@ -411,7 +368,7 @@ export default function ProjectStudioPage() {
           </div>
 
           <h3>{selectedName}</h3>
-          <p>{project?.description ? project.description.slice(0, 40) + '...' : 'Home care, made human.'}</p>
+          <p>{project?.idea || project?.description ? (project?.idea || project?.description).slice(0, 45) + '...' : 'AI Brand Studio'}</p>
 
           <div className="run-progress">
             <div>
@@ -422,6 +379,43 @@ export default function ProjectStudioPage() {
               <span style={{ width: `${Math.max(progressPercent, 12)}%` }} />
             </div>
           </div>
+
+          <button
+            onClick={handleStartPipeline}
+            disabled={isStartingPipeline}
+            className="start-pipeline-btn"
+            style={{
+              width: '100%',
+              padding: '10px 14px',
+              marginTop: '12px',
+              marginBottom: '16px',
+              background: 'linear-gradient(135deg, #7c5cff 0%, #a855f7 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 600,
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              cursor: isStartingPipeline ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 14px rgba(124, 92, 255, 0.35)',
+              opacity: isStartingPipeline ? 0.7 : 1,
+            }}
+          >
+            {isStartingPipeline ? (
+              <>
+                <RefreshCw size={14} className="animate-spin" />
+                <span>Agents Orchestrating...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} />
+                <span>{completedCount > 0 ? 'Rerun 8-Agent Pipeline' : 'Run 8-Agent Pipeline'}</span>
+              </>
+            )}
+          </button>
 
           {/* 8-Stage Interactive List */}
           <div className="stage-list">
@@ -728,5 +722,15 @@ export default function ProjectStudioPage() {
         </aside>
       </div>
     </div>
+
+    {/* Brand Intelligence Studio Assistant Drawer */}
+    <BrandChatDrawer
+      projectId={projectId}
+      projectName={selectedName}
+      onBrandStateUpdated={(updatedState) => {
+        setBrandState((prev: any) => ({ ...prev, ...updatedState }));
+      }}
+    />
+    </ProtectedRoute>
   );
 }

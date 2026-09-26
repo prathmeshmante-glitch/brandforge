@@ -1,13 +1,29 @@
+import { getSupabaseClient } from './supabase';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') || 'test-token-user1' : 'test-token-user1';
-  
-  const headers = {
+  let token: string | null = null;
+
+  // Retrieve current Supabase session access token
+  if (typeof window !== 'undefined') {
+    try {
+      const supabase = getSupabaseClient();
+      const { data } = await supabase.auth.getSession();
+      token = data.session?.access_token || null;
+    } catch (e) {
+      console.warn('Could not read session token from Supabase client:', e);
+    }
+  }
+
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-    ...(options.headers || {}),
+    ...(options.headers as Record<string, string> || {}),
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -15,6 +31,26 @@ export async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      console.warn('API returned 401 Unauthorized for:', endpoint);
+      try {
+        const supabase = getSupabaseClient();
+        const { data: refreshData } = await supabase.auth.refreshSession();
+        if (refreshData?.session?.access_token) {
+          headers['Authorization'] = `Bearer ${refreshData.session.access_token}`;
+          const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+            ...options,
+            headers,
+          });
+          if (retryResponse.ok) {
+            return retryResponse.json();
+          }
+        }
+      } catch (refreshErr) {
+        console.warn('Session refresh on 401 failed:', refreshErr);
+      }
+    }
+
     const errorData = await response.json().catch(() => ({ detail: 'Network request failed' }));
     throw new Error(errorData.detail || `API error (${response.status})`);
   }
@@ -48,6 +84,11 @@ export const api = {
 
   exportBrandKit: (projectId: string, format: string = 'pdf') =>
     fetchAPI(`/api/projects/${projectId}/export`, { method: 'POST', body: JSON.stringify({ format }) }),
+
+  getChatHistory: (projectId: string) => fetchAPI(`/api/projects/${projectId}/chat`),
+
+  sendChatMessage: (projectId: string, message: string) =>
+    fetchAPI(`/api/projects/${projectId}/chat`, { method: 'POST', body: JSON.stringify({ message }) }),
 
   getBaseUrl: () => API_BASE_URL,
 };

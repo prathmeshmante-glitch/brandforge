@@ -58,8 +58,8 @@ class WorkflowService:
     @staticmethod
     def get_workflow_status(project_id: str, run_id: str, user_id: str) -> Dict[str, Any]:
         run = RunService.get_run(run_id, project_id, user_id)
-        artifacts = repository.get_artifacts_for_run(run_id)
-        completed_stages = {a["stage"] for a in artifacts}
+        state_bundle = repository.get_accumulated_brand_state(project_id)
+        completed_stages = set(state_bundle["completed_stages"])
         
         stage_statuses = []
         for s in STAGES_LIST:
@@ -75,7 +75,7 @@ class WorkflowService:
         return {
             "run_id": run_id,
             "project_id": project_id,
-            "status": run["status"],
+            "status": state_bundle["status"],
             "current_stage": current_stage,
             "stages": stage_statuses
         }

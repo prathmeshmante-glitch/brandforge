@@ -1,7 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import { Sparkles, Save, Download, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Save, Download, ArrowLeft, CheckCircle2, LogOut } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { useAuth } from '../../lib/auth-context';
 
 interface StudioHeaderProps {
   projectName: string;
@@ -14,6 +15,8 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
   isSaved = true,
   onExport,
 }) => {
+  const { user, profile, signOut } = useAuth();
+
   return (
     <header className="h-14 border-b border-slate-800 bg-[#0b0f19] px-4 flex items-center justify-between z-30">
       <div className="flex items-center gap-4">
@@ -57,6 +60,29 @@ export const StudioHeader: React.FC<StudioHeaderProps> = ({
             <Download className="w-3.5 h-3.5" />
             <span>Export Brand Kit</span>
           </Button>
+        )}
+
+        {user && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '6px', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '10px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--muted)' }} className="hidden sm:inline">
+              {profile?.name || user.email?.split('@')[0]}
+            </span>
+            <button
+              onClick={() => signOut()}
+              title="Sign out of studio"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--subtle)',
+                cursor: 'pointer',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <LogOut className="w-3.5 h-3.5 hover:text-white transition-colors" />
+            </button>
+          </div>
         )}
       </div>
     </header>

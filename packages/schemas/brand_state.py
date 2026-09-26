@@ -124,12 +124,17 @@ class CritiqueIssue(BaseModel):
     suggestion: str = Field(..., description="Actionable recommendation for improvement")
 
 
+class RevisedOption(BaseModel):
+    area: str = Field(..., description="Target area to revise: naming, positioning, visual, personality")
+    suggestion: str = Field(..., description="Proposed alternative suggestion")
+
+
 class CriticOutput(BaseModel):
     issues: List[CritiqueIssue] = Field(default_factory=list, description="List of identified issues")
     genericity_checks: List[str] = Field(default_factory=list, description="Genericity evaluation notes")
     audience_mismatch: List[str] = Field(default_factory=list, description="Audience mismatch warnings")
     contradictions: List[str] = Field(default_factory=list, description="Internal contradictions found")
-    revised_options: List[Dict[str, Any]] = Field(default_factory=list, description="Alternative options proposed")
+    revised_options: List[RevisedOption] = Field(default_factory=list, description="Alternative options proposed")
 
 
 # ---------------------------------------------------------------------------

@@ -139,7 +139,8 @@ def position_node(state: Dict[str, Any], provider: Optional[BaseAIProvider] = No
     """Execute Agent 2: Positioner."""
     ai_provider = provider or get_ai_provider()
     discovery = state.get("discovery", {})
-    prompt = f"Idea: {state.get('idea')}\nDiscovery Context: {discovery}"
+    selected = state.get("selected_direction", {})
+    prompt = f"Idea: {state.get('idea')}\nDiscovery Context: {discovery}\nUser Directives / Decisions: {selected}"
     
     output: PositionerOutput = ai_provider.generate_structured(
         prompt=prompt,
@@ -333,15 +334,25 @@ def revision_planner_node(state: Dict[str, Any], provider: Optional[BaseAIProvid
 def launch_node(state: Dict[str, Any], provider: Optional[BaseAIProvider] = None) -> Dict[str, Any]:
     """Execute Agent 8: Launch Agent."""
     ai_provider = provider or get_ai_provider()
-    naming = state.get("naming", {})
     selected = state.get("selected_direction", {})
-    selected_name = selected.get("name") or selected.get("preferred_name") or "NexusCraft"
+    selected_name = selected.get("name") or selected.get("preferred_name")
+    if not selected_name:
+        naming = state.get("naming", {})
+        territories = naming.get("territories", []) if isinstance(naming, dict) else []
+        for t in territories:
+            names = t.get("names", []) if isinstance(t, dict) else []
+            if names and isinstance(names[0], dict) and names[0].get("name"):
+                selected_name = names[0]["name"]
+                break
+    if not selected_name:
+        selected_name = state.get("idea", "BrandForge Studio")
     
     prompt = (
         f"Approved Brand Name: {selected_name}\n"
         f"Positioning: {state.get('positioning')}\n"
         f"Personality: {state.get('personality')}\n"
-        f"Visual Direction: {state.get('visual_direction')}"
+        f"Visual Direction: {state.get('visual_direction')}\n"
+        f"User Directive: {selected}"
     )
     
     output: LaunchAgentOutput = ai_provider.generate_structured(
