@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Rocket, Download, Share2, Sparkles, Palette, Globe, MessageSquare, Check } from 'lucide-react';
+import { Rocket, Download, Share2, Sparkles, Palette, Globe, MessageSquare, Check, Mic, Newspaper } from 'lucide-react';
 
 interface LaunchBrandKitViewProps {
   launchData: any;
@@ -16,21 +16,84 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
   onExportPDF,
   isLoading = false,
 }) => {
+  // Resolve brand name
   const selectedName =
+    launchData?.brand_name ||
     brandState.selected_directions?.chosen_name ||
-    brandState.naming?.suggestions?.[0]?.name ||
+    brandState.selected_directions?.name?.name ||
+    (typeof brandState.selected_directions?.name === 'string' ? brandState.selected_directions?.name : null) ||
     brandState.naming?.territories?.[0]?.names?.[0]?.name ||
+    brandState.naming?.suggestions?.[0]?.name ||
     brandState.name ||
     'BrandForge';
+
   const tagline = launchData?.tagline || 'From rough idea to launch-ready brand.';
   const pitch =
     launchData?.one_line_pitch ||
     'AI Brand Intelligence Studio that turns raw ideas into structured brand kits.';
-  const personality = brandState.personality;
-  const visual = brandState.visual_direction;
-  const colors = visual?.color_palette || [];
-  const landingCopy = launchData?.landing_page_copy || {};
-  const socialPosts = launchData?.social_posts || [];
+
+  // Personality extraction
+  const personality = brandState.personality || {};
+  const archetype = personality.brand_archetype || personality.archetype || 'Creator / Visionary';
+  const emotionalGoal = personality.emotional_goal || 'Empowered engineering clarity';
+  const rawTraits = Array.isArray(personality.personality)
+    ? personality.personality
+    : Array.isArray(personality.traits)
+    ? personality.traits
+    : ['Innovative', 'Authoritative', 'Minimalist'];
+
+  // Visual extraction
+  const visual = brandState.visual_direction || brandState.visual || {};
+  const rawColors = Array.isArray(visual.color_direction)
+    ? visual.color_direction
+    : Array.isArray(visual.color_palette)
+    ? visual.color_palette
+    : ['#0A0A0C', '#15161C', '#7C5CFF', '#B4A5FF', '#F5F5F7'];
+
+  const normalizedColors = rawColors.map((c: any, idx: number) => {
+    if (typeof c === 'string') {
+      const isHex = c.startsWith('#');
+      return {
+        hex: isHex ? c : '#7C5CFF',
+        name: isHex ? `Swatch 0${idx + 1}` : c,
+      };
+    } else if (c && typeof c === 'object') {
+      return {
+        hex: c.hex || '#7C5CFF',
+        name: c.name || `Swatch 0${idx + 1}`,
+      };
+    }
+    return { hex: '#7C5CFF', name: 'Accent' };
+  });
+
+  // Typography extraction
+  let headerFont = 'Editorial Serif (Georgia / Canela)';
+  let bodyFont = 'Inter / Modern System Sans';
+  if (Array.isArray(visual.typography) && visual.typography.length > 0) {
+    headerFont = typeof visual.typography[0] === 'string' ? visual.typography[0] : headerFont;
+    if (visual.typography.length > 1) {
+      bodyFont = typeof visual.typography[1] === 'string' ? visual.typography[1] : bodyFont;
+    }
+  } else if (visual.typography && typeof visual.typography === 'object') {
+    headerFont = visual.typography.header_font || headerFont;
+    bodyFont = visual.typography.body_font || bodyFont;
+  }
+
+  // Canonical Landing Page Copy
+  const landingCopy = launchData?.landing_page || launchData?.landing_page_copy || {};
+  const headline = landingCopy.headline || `From rough idea to launch-ready brand with ${selectedName}`;
+  const subheadline = landingCopy.subheadline || 'Transform unstructured ideas into coherent brand systems through structured AI reasoning, human decisions, critique, and consistency.';
+  const cta = landingCopy.cta || 'Start building';
+
+  // Canonical Social Copy
+  const socialData = launchData?.social || {};
+  const instagramCopy = socialData.instagram || '';
+  const linkedinCopy = socialData.linkedin || '';
+  const rawSocialPosts = Array.isArray(launchData?.social_posts) ? launchData.social_posts : [];
+
+  // Voice Samples & Launch Message
+  const voiceSamples = Array.isArray(launchData?.brand_voice_samples) ? launchData.brand_voice_samples : [];
+  const launchMessage = launchData?.launch_message || '';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', paddingBottom: '40px' }}>
@@ -55,7 +118,7 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
           {selectedName}
         </h1>
         <p style={{ font: '18px Georgia, serif', color: '#c0b7dd', margin: '0 0 14px', fontStyle: 'italic' }}>
-          {tagline}
+          "{tagline}"
         </p>
         <p style={{ fontSize: '13px', color: 'var(--muted)', maxWidth: '580px', margin: '0 auto 28px', lineHeight: 1.6 }}>
           {pitch}
@@ -103,7 +166,7 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
                 ARCHETYPE
               </span>
               <b style={{ fontFamily: 'Georgia, serif', fontSize: '18px', color: '#fff' }}>
-                {personality?.archetype || 'Creator / Visionary'}
+                {archetype}
               </b>
             </div>
 
@@ -112,21 +175,24 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
                 KEY TRAITS
               </span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {(personality?.traits || ['Innovative', 'Authoritative', 'Minimalist']).map((t: string, idx: number) => (
-                  <span
-                    key={idx}
-                    style={{
-                      font: '9px monospace',
-                      color: '#d8d2df',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid var(--border)',
-                      borderRadius: '6px',
-                      padding: '4px 8px',
-                    }}
-                  >
-                    {t}
-                  </span>
-                ))}
+                {rawTraits.map((t: any, idx: number) => {
+                  const traitName = typeof t === 'string' ? t : t.trait || `Trait ${idx + 1}`;
+                  return (
+                    <span
+                      key={idx}
+                      style={{
+                        font: '9px monospace',
+                        color: '#d8d2df',
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                      }}
+                    >
+                      {traitName}
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
@@ -135,7 +201,7 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
                 EMOTIONAL RESONANCE
               </span>
               <p style={{ fontSize: '12px', color: '#c0b7dd', fontStyle: 'italic', margin: 0 }}>
-                "{personality?.emotional_goal || 'Empowered engineering clarity'}"
+                "{emotionalGoal}"
               </p>
             </div>
           </div>
@@ -158,7 +224,7 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(65px, 1fr))', gap: '8px', marginBottom: '16px' }}>
-            {colors.map((c: any, idx: number) => (
+            {normalizedColors.map((c: any, idx: number) => (
               <div key={idx} style={{ textAlign: 'center' }}>
                 <div
                   style={{
@@ -175,12 +241,10 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
             ))}
           </div>
 
-          {visual?.typography && (
-            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--muted)' }}>
-              <span>Header: <strong style={{ color: '#fff' }}>{visual.typography.header_font}</strong></span>
-              <span>Body: <strong style={{ color: '#fff' }}>{visual.typography.body_font}</strong></span>
-            </div>
-          )}
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--muted)' }}>
+            <span>Header: <strong style={{ color: '#fff' }}>{headerFont}</strong></span>
+            <span>Body: <strong style={{ color: '#fff' }}>{bodyFont}</strong></span>
+          </div>
         </div>
       </div>
 
@@ -206,7 +270,7 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
               HERO HEADLINE
             </span>
             <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', margin: 0, fontWeight: 500, color: '#fff' }}>
-              {landingCopy.headline || `From rough idea to launch-ready brand with ${selectedName}`}
+              {headline}
             </h3>
           </div>
 
@@ -215,7 +279,7 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
               SUBHEADLINE
             </span>
             <p style={{ fontSize: '13px', color: 'var(--muted)', margin: 0, lineHeight: 1.6 }}>
-              {landingCopy.subheadline || 'Transform unstructured ideas into coherent brand systems through structured AI reasoning, human decisions, critique, and consistency.'}
+              {subheadline}
             </p>
           </div>
 
@@ -224,14 +288,14 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
               PRIMARY CTA
             </span>
             <span style={{ display: 'inline-block', background: 'var(--indigo)', color: '#fff', font: '10px monospace', padding: '6px 14px', borderRadius: '999px', letterSpacing: '0.08em' }}>
-              {landingCopy.cta || 'Start building'}
+              {cta}
             </span>
           </div>
         </div>
       </div>
 
       {/* Social Content Snippets */}
-      {socialPosts.length > 0 && (
+      {(instagramCopy || linkedinCopy || rawSocialPosts.length > 0) && (
         <div
           style={{
             background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
@@ -248,18 +312,32 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
-            {socialPosts.map((post: any, idx: number) => (
-              <div
-                key={idx}
-                style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  padding: '16px',
-                }}
-              >
+            {instagramCopy && (
+              <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
                 <span style={{ font: '9px monospace', color: '#ab9cff', display: 'block', marginBottom: '8px' }}>
-                  PLATFORM / {post.platform || 'X / TWITTER'}
+                  PLATFORM / INSTAGRAM
+                </span>
+                <p style={{ fontSize: '12px', color: 'var(--text)', lineHeight: 1.6, margin: 0, fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
+                  "{instagramCopy}"
+                </p>
+              </div>
+            )}
+
+            {linkedinCopy && (
+              <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+                <span style={{ font: '9px monospace', color: '#ab9cff', display: 'block', marginBottom: '8px' }}>
+                  PLATFORM / LINKEDIN
+                </span>
+                <p style={{ fontSize: '12px', color: 'var(--text)', lineHeight: 1.6, margin: 0, fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
+                  "{linkedinCopy}"
+                </p>
+              </div>
+            )}
+
+            {rawSocialPosts.map((post: any, idx: number) => (
+              <div key={idx} style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
+                <span style={{ font: '9px monospace', color: '#ab9cff', display: 'block', marginBottom: '8px' }}>
+                  PLATFORM / {post.platform || `CHANNEL 0${idx + 1}`}
                 </span>
                 <p style={{ fontSize: '12px', color: 'var(--text)', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
                   "{post.content || post.text}"
@@ -267,6 +345,43 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Brand Voice Samples & Launch Message */}
+      {(voiceSamples.length > 0 || launchMessage) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+          {voiceSamples.length > 0 && (
+            <div style={{ background: 'linear-gradient(145deg, #15161cdd, #101116cc)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--indigo)', marginBottom: '14px' }}>
+                <Mic size={16} />
+                <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+                  BRAND VOICE SAMPLES
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {voiceSamples.map((sample: string, idx: number) => (
+                  <p key={idx} style={{ fontSize: '12px', color: '#e2dcff', margin: 0, fontStyle: 'italic', borderLeft: '2px solid var(--indigo)', paddingLeft: '10px' }}>
+                    "{sample}"
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {launchMessage && (
+            <div style={{ background: 'linear-gradient(145deg, #15161cdd, #101116cc)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--sage)', marginBottom: '14px' }}>
+                <Newspaper size={16} />
+                <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+                  FOUNDER LAUNCH STATEMENT
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
+                {launchMessage}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from typing import Dict, Any
 from apps.api.app.core.security import get_current_user
@@ -10,9 +10,13 @@ router = APIRouter(prefix="/api/projects/{project_id}", tags=["Workflow Engine"]
 
 
 @router.post("/workflow/start", status_code=status.HTTP_202_ACCEPTED)
-def start_workflow(project_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+def start_workflow(
+    project_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
     user_id = current_user["id"]
-    return WorkflowService.start_workflow(project_id=project_id, user_id=user_id)
+    return WorkflowService.start_workflow(project_id=project_id, user_id=user_id, background_tasks=background_tasks)
 
 
 @router.get("/workflow/{run_id}", response_model=WorkflowStatusResponse)

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Swords, Check, ArrowRight, ShieldAlert, RefreshCw, XCircle, AlertTriangle } from 'lucide-react';
+import { Swords, Check, ArrowRight, ShieldAlert, RefreshCw, XCircle, AlertTriangle, Lightbulb, Zap } from 'lucide-react';
 
 interface BrandBattleViewProps {
   critiqueData: any;
@@ -28,18 +28,38 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
     );
   }
 
-  const {
-    overall_assessment,
-    genericity_score,
-    audience_fit,
-    differentiation_rating,
-    positioning_strength,
-    personality_consistency,
-    visual_strategy_fit,
-    key_weaknesses = [],
-    recommended_revisions = [],
-    critique_items = [],
-  } = critiqueData;
+  // Canonical Schema Extraction
+  // CriticOutput provides: issues[], genericity_checks[], audience_mismatch[], contradictions[], revised_options[]
+  const rawIssues = Array.isArray(critiqueData.issues)
+    ? critiqueData.issues
+    : Array.isArray(critiqueData.critique_items)
+    ? critiqueData.critique_items
+    : [];
+
+  const genericityChecks = Array.isArray(critiqueData.genericity_checks)
+    ? critiqueData.genericity_checks
+    : [];
+
+  const audienceMismatches = Array.isArray(critiqueData.audience_mismatch)
+    ? critiqueData.audience_mismatch
+    : [];
+
+  const contradictions = Array.isArray(critiqueData.contradictions)
+    ? critiqueData.contradictions
+    : [];
+
+  const revisedOptions = Array.isArray(critiqueData.revised_options)
+    ? critiqueData.revised_options
+    : Array.isArray(critiqueData.recommended_revisions)
+    ? critiqueData.recommended_revisions.map((r: any) => ({
+        area: 'Strategy',
+        suggestion: typeof r === 'string' ? r : r.suggestion || JSON.stringify(r),
+      }))
+    : [];
+
+  // Severity tallies
+  const highSeverityCount = rawIssues.filter((i: any) => (i.severity || '').toLowerCase() === 'high').length;
+  const medSeverityCount = rawIssues.filter((i: any) => (i.severity || '').toLowerCase() === 'medium').length;
 
   const handleRevisionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,16 +109,14 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
             </div>
           </div>
 
-          {overall_assessment && (
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block' }}>
-                CRITIC VERDICT
-              </span>
-              <span style={{ font: '11px monospace', color: '#ffd2cc', fontWeight: 600 }}>
-                {overall_assessment}
-              </span>
-            </div>
-          )}
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.1em', display: 'block' }}>
+              CRITIC VERDICT
+            </span>
+            <span style={{ font: '11px monospace', color: highSeverityCount > 0 ? '#ff8a7a' : '#c7f1d8', fontWeight: 600 }}>
+              {highSeverityCount > 0 ? `${highSeverityCount} High-Risk Flags` : 'System Battle Tested'}
+            </span>
+          </div>
         </div>
 
         <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.6, marginTop: '16px', maxWidth: '720px' }}>
@@ -109,12 +127,11 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
       {/* Adversarial Scorecards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
         {[
-          { label: 'Genericity', val: genericity_score || 'Low (2/10)', color: 'var(--amber)' },
-          { label: 'Audience Fit', val: audience_fit || 'High (9/10)', color: 'var(--sage)' },
-          { label: 'Differentiation', val: differentiation_rating || 'Strong', color: 'var(--indigo)' },
-          { label: 'Positioning', val: positioning_strength || 'Solid', color: '#b4a5ff' },
-          { label: 'Personality', val: personality_consistency || 'Consistent', color: '#c0b7dd' },
-          { label: 'Visual Fit', val: visual_strategy_fit || 'High', color: 'var(--sage)' },
+          { label: 'Total Issues', val: rawIssues.length.toString(), color: rawIssues.length > 3 ? 'var(--coral)' : 'var(--amber)' },
+          { label: 'High Severity', val: highSeverityCount.toString(), color: highSeverityCount > 0 ? 'var(--coral)' : 'var(--sage)' },
+          { label: 'Medium Severity', val: medSeverityCount.toString(), color: 'var(--amber)' },
+          { label: 'Genericity Checks', val: genericityChecks.length.toString(), color: 'var(--indigo)' },
+          { label: 'Contradictions', val: contradictions.length.toString(), color: contradictions.length > 0 ? 'var(--coral)' : 'var(--sage)' },
         ].map((stat, idx) => (
           <div
             key={idx}
@@ -129,40 +146,46 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
             <span style={{ font: '9px monospace', color: 'var(--subtle)', letterSpacing: '0.12em', display: 'block', marginBottom: '6px' }}>
               {stat.label.toUpperCase()}
             </span>
-            <b style={{ fontFamily: 'Georgia, serif', fontSize: '16px', color: stat.color, fontWeight: 500 }}>
+            <b style={{ fontFamily: 'Georgia, serif', fontSize: '18px', color: stat.color, fontWeight: 500 }}>
               {stat.val}
             </b>
           </div>
         ))}
       </div>
 
-      {/* Market Challenges Grid */}
-      {critique_items.length > 0 && (
+      {/* Market Challenges & Critique Issues Grid */}
+      {rawIssues.length > 0 && (
         <div>
           <div className="section-index" style={{ marginBottom: '12px' }}>
-            CRITIQUE ITEMS / {critique_items.length} CHALLENGES IDENTIFIED
+            CRITIQUE ISSUES / {rawIssues.length} ADVERSARIAL CHALLENGES
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
-            {critique_items.map((item: any, idx: number) => {
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '14px' }}>
+            {rawIssues.map((item: any, idx: number) => {
               const sev = (item.severity || 'Medium').toLowerCase();
               const sevColor = sev === 'high' || sev === 'critical' ? 'var(--coral)' : sev === 'medium' ? 'var(--amber)' : 'var(--sage)';
+              const target = item.target || item.area || 'General';
+              const problem = item.problem || item.finding || item.issue || 'Strategic tension noted.';
+              const evidence = item.evidence || item.explanation || '';
+              const suggestion = item.suggestion || item.recommendation || '';
+
               return (
                 <div
                   key={idx}
                   style={{
                     background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
-                    border: '1px solid var(--border)',
+                    border: `1px solid ${sev === 'high' ? 'rgba(255, 107, 94, 0.35)' : 'var(--border)'}`,
                     borderRadius: '14px',
-                    padding: '18px',
+                    padding: '20px',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
+                    gap: '12px',
                   }}
                 >
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ font: '10px monospace', color: '#fff', fontWeight: 600 }}>
-                        {item.category || item.area || 'Market Friction'}
+                      <span style={{ font: '10px monospace', color: '#b4a5ff', fontWeight: 600, letterSpacing: '0.08em' }}>
+                        TARGET: {target.toUpperCase()}
                       </span>
                       <span
                         style={{
@@ -172,18 +195,28 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
                           border: `1px solid ${sevColor}40`,
                           borderRadius: '999px',
                           padding: '2px 8px',
+                          textTransform: 'uppercase',
                         }}
                       >
-                        {item.severity || 'Medium'} Severity
+                        {sev} severity
                       </span>
                     </div>
-                    <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.5, margin: '8px 0' }}>
-                      {item.finding || item.issue}
+
+                    <p style={{ fontSize: '13px', color: '#fff', lineHeight: 1.5, margin: '8px 0', fontWeight: 500 }}>
+                      {problem}
                     </p>
-                    {item.explanation && (
-                      <p style={{ fontSize: '11px', color: '#c0b7dd', fontStyle: 'italic', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.04)', margin: '8px 0 0' }}>
-                        "{item.explanation}"
+
+                    {evidence && (
+                      <p style={{ fontSize: '11px', color: 'var(--muted)', background: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', margin: '8px 0' }}>
+                        <span style={{ color: 'var(--subtle)' }}>Evidence:</span> {evidence}
                       </p>
+                    )}
+
+                    {suggestion && (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginTop: '10px', fontSize: '12px', color: '#c7f1d8' }}>
+                        <Lightbulb size={14} color="var(--sage)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <span>{suggestion}</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -193,32 +226,38 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
         </div>
       )}
 
-      {/* Weaknesses & Revisions Bento */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+      {/* Genericity, Contradictions & Revised Options Bento */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '14px' }}>
+        {/* Genericity Checks */}
         <div
           style={{
-            background: 'radial-gradient(ellipse at 90% 10%, rgba(255, 107, 94, 0.08), transparent 50%), #121319',
-            border: '1px solid rgba(255, 107, 94, 0.25)',
+            background: 'radial-gradient(ellipse at 90% 10%, rgba(245, 165, 36, 0.08), transparent 50%), #121319',
+            border: '1px solid rgba(245, 165, 36, 0.25)',
             borderRadius: '14px',
             padding: '20px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--coral)', marginBottom: '12px' }}>
-            <ShieldAlert size={16} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--amber)', marginBottom: '12px' }}>
+            <Zap size={16} />
             <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
-              KEY VULNERABILITIES
+              GENERICITY & DIFFERENTIATION FLAGS
             </span>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {key_weaknesses.map((w: string, idx: number) => (
-              <li key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '12px', color: '#eed2cf' }}>
-                <XCircle size={14} color="var(--coral)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>{w}</span>
-              </li>
-            ))}
+            {genericityChecks.length > 0 ? (
+              genericityChecks.map((item: any, idx: number) => (
+                <li key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '12px', color: '#ffebc4' }}>
+                  <span style={{ color: 'var(--amber)', fontWeight: 700 }}>•</span>
+                  <span>{typeof item === 'string' ? item : JSON.stringify(item)}</span>
+                </li>
+              ))
+            ) : (
+              <li style={{ fontSize: '12px', color: 'var(--muted)' }}>No critical genericity traps flagged.</li>
+            )}
           </ul>
         </div>
 
+        {/* Revised Options */}
         <div
           style={{
             background: 'radial-gradient(ellipse at 90% 10%, rgba(124, 92, 255, 0.08), transparent 50%), #121319',
@@ -228,18 +267,29 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b4a5ff', marginBottom: '12px' }}>
-            <RefreshCw size={16} />
+            <Lightbulb size={16} />
             <span style={{ font: '10px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
-              STRATEGIC REVISIONS
+              RECOMMENDED REVISIONS
             </span>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {recommended_revisions.map((r: string, idx: number) => (
-              <li key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '12px', color: '#d8d2df' }}>
-                <span style={{ color: 'var(--indigo)', fontWeight: 700 }}>•</span>
-                <span>{r}</span>
-              </li>
-            ))}
+            {revisedOptions.length > 0 ? (
+              revisedOptions.map((opt: any, idx: number) => {
+                const area = opt.area || 'Strategy';
+                const sugg = opt.suggestion || (typeof opt === 'string' ? opt : JSON.stringify(opt));
+
+                return (
+                  <li key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', fontSize: '12px', color: '#d8d2df' }}>
+                    <span style={{ color: 'var(--indigo)', fontWeight: 700 }}>•</span>
+                    <div>
+                      <strong style={{ color: '#fff' }}>[{area}]:</strong> {sugg}
+                    </div>
+                  </li>
+                );
+              })
+            ) : (
+              <li style={{ fontSize: '12px', color: 'var(--muted)' }}>Ready for Consistency Guardian evaluation.</li>
+            )}
           </ul>
         </div>
       </div>

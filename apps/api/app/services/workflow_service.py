@@ -1,10 +1,14 @@
 import json
 import asyncio
-from typing import Dict, Any, AsyncGenerator
+import logging
+from typing import Dict, Any, AsyncGenerator, Optional
+from fastapi import BackgroundTasks
 from apps.api.app.services.project_service import ProjectService
 from apps.api.app.services.run_service import RunService
 from apps.api.app.db.repository import repository
 from apps.api.ai.graph_interface import run_brand_workflow, stream_brand_workflow
+
+logger = logging.getLogger(__name__)
 
 STAGES_LIST = [
     "discovery",
@@ -20,62 +24,109 @@ STAGES_LIST = [
 
 class WorkflowService:
     @staticmethod
-    def start_workflow(project_id: str, user_id: str) -> Dict[str, Any]:
+    def _execute_workflow_job(project_id: str, run_id: str, idea: str, constraints: Dict[str, Any]):
+        try:
+            repository.update_brand_run_status(run_id, "running")
+            selections = repository.get_selections_for_project(project_id)
+            selected_dict = {s["direction_type"]: s["selected_value"] for s in selections}
+
+            initial_state = {
+                "project_id": project_id,
+                "run_id": run_id,
+                "idea": idea,
+                "constraints": constraints,
+                "selected_direction": selected_dict,
+                "status": "started",
+                "revision_count": 0,
+                "errors": []
+            }
+
+            final_state = run_brand_workflow(initial_state)
+            status = final_state.get("status", "completed")
+            repository.update_brand_run_status(run_id, status)
+            logger.info(f"Workflow run {run_id} for project {project_id} completed with status: {status}")
+        except Exception as e:
+            logger.error(f"Workflow run {run_id} failed with error: {e}", exc_info=True)
+            repository.update_brand_run_status(run_id, "failed")
+
+    @staticmethod
+    def start_workflow(
+        project_id: str,
+        user_id: str,
+        background_tasks: Optional[BackgroundTasks] = None
+    ) -> Dict[str, Any]:
         # Enforce project ownership authorization
         project = ProjectService.get_user_project(project_id, user_id)
         run = RunService.create_run(project_id, user_id)
-        
-        # Load user selections if present
-        selections = repository.get_selections_for_project(project_id)
-        selected_dict = {s["direction_type"]: s["selected_value"] for s in selections}
-        
-        initial_state = {
-            "project_id": project_id,
-            "run_id": run["id"],
-            "idea": project["idea"],
-            "constraints": project.get("constraints", {}),
-            "selected_direction": selected_dict,
-            "status": "started",
-            "revision_count": 0,
-            "errors": []
-        }
-        
-        # Execute LangGraph AI Workflow
-        final_state = run_brand_workflow(initial_state)
-        
-        # Update run status
-        run["status"] = final_state.get("status", "completed")
-        run["completed_at"] = "2026-09-25T20:00:00Z"
-        
-        return {
-            "run_id": run["id"],
-            "project_id": project_id,
-            "status": run["status"],
-            "revision_count": final_state.get("revision_count", 0),
-            "message": "AI workflow execution completed successfully"
-        }
+        run_id = run["id"]
+        repository.update_brand_run_status(run_id, "running")
+
+        idea = project.get("idea", "")
+        constraints = project.get("constraints", {})
+
+        if background_tasks:
+            background_tasks.add_task(
+                WorkflowService._execute_workflow_job,
+                project_id,
+                run_id,
+                idea,
+                constraints
+            )
+            return {
+                "run_id": run_id,
+                "project_id": project_id,
+                "status": "running",
+                "revision_count": 0,
+                "message": "AI workflow started in background"
+            }
+        else:
+            # Synchronous execution for test environments or when background_tasks is None
+            WorkflowService._execute_workflow_job(project_id, run_id, idea, constraints)
+            updated_run = repository.get_brand_run_by_id(run_id) or run
+            return {
+                "run_id": run_id,
+                "project_id": project_id,
+                "status": updated_run.get("status", "completed"),
+                "revision_count": 0,
+                "message": "AI workflow execution completed"
+            }
 
     @staticmethod
     def get_workflow_status(project_id: str, run_id: str, user_id: str) -> Dict[str, Any]:
         run = RunService.get_run(run_id, project_id, user_id)
+        run_status = run.get("status", "running")
         state_bundle = repository.get_accumulated_brand_state(project_id)
         completed_stages = set(state_bundle["completed_stages"])
         
         stage_statuses = []
-        for s in STAGES_LIST:
-            status = "completed" if s in completed_stages else "pending"
+        for i, s in enumerate(STAGES_LIST):
+            if s in completed_stages:
+                stage_status = "completed"
+            elif run_status == "running" and len(completed_stages) == i:
+                stage_status = "running"
+            elif run_status == "failed" and len(completed_stages) == i:
+                stage_status = "failed"
+            else:
+                stage_status = "waiting"
+
             stage_statuses.append({
                 "stage": s,
-                "status": status,
+                "status": stage_status,
                 "artifacts_count": 1 if s in completed_stages else 0
             })
             
-        current_stage = STAGES_LIST[len(completed_stages)] if len(completed_stages) < len(STAGES_LIST) else "completed"
+        current_stage = (
+            STAGES_LIST[len(completed_stages)]
+            if len(completed_stages) < len(STAGES_LIST)
+            else "completed"
+        )
         
+        overall_status = "completed" if len(completed_stages) == len(STAGES_LIST) else run_status
+
         return {
             "run_id": run_id,
             "project_id": project_id,
-            "status": state_bundle["status"],
+            "status": overall_status,
             "current_stage": current_stage,
             "stages": stage_statuses
         }
@@ -141,7 +192,8 @@ class WorkflowService:
         }
         
         final_state = run_brand_workflow(initial_state)
-        run["status"] = final_state.get("status", "completed")
+        run_status = final_state.get("status", "completed")
+        repository.update_brand_run_status(run["id"], run_status)
         
         return {
             "status": "revision_completed",

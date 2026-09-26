@@ -55,5 +55,60 @@ class TestDatabaseMigration(unittest.TestCase):
         self.assertIn("CREATE POLICY \"Storage: Authenticated users can view own brand assets\"", self.sql)
         self.assertIn("(storage.foldername(name))[1] = auth.uid()::text", self.sql)
 
+    def test_supabase_secret_key_no_browser_fallback(self):
+        from apps.api.app.core.config import _resolve_supabase_secret_key
+        orig_secret = os.environ.get("SUPABASE_SECRET_KEY")
+        orig_legacy = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        orig_env = os.environ.get("ENVIRONMENT")
+        
+        try:
+            if "SUPABASE_SECRET_KEY" in os.environ:
+                del os.environ["SUPABASE_SECRET_KEY"]
+            if "SUPABASE_SERVICE_ROLE_KEY" in os.environ:
+                del os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+            os.environ["ENVIRONMENT"] = "development"
+            os.environ["NEXT_PUBLIC_SUPABASE_ANON_KEY"] = "fake-anon-key"
+            os.environ["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"] = "fake-publishable-key"
+
+            # Must NOT return fake-anon-key or fake-publishable-key
+            key = _resolve_supabase_secret_key()
+            self.assertEqual(key, "")
+        finally:
+            if orig_secret is not None:
+                os.environ["SUPABASE_SECRET_KEY"] = orig_secret
+            elif "SUPABASE_SECRET_KEY" in os.environ:
+                del os.environ["SUPABASE_SECRET_KEY"]
+            if orig_legacy is not None:
+                os.environ["SUPABASE_SERVICE_ROLE_KEY"] = orig_legacy
+            if orig_env is not None:
+                os.environ["ENVIRONMENT"] = orig_env
+
+    def test_production_fails_explicitly_if_secret_missing(self):
+        from apps.api.app.core.config import _resolve_supabase_secret_key
+        orig_secret = os.environ.get("SUPABASE_SECRET_KEY")
+        orig_legacy = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+        orig_env = os.environ.get("ENVIRONMENT")
+
+        try:
+            if "SUPABASE_SECRET_KEY" in os.environ:
+                del os.environ["SUPABASE_SECRET_KEY"]
+            if "SUPABASE_SERVICE_ROLE_KEY" in os.environ:
+                del os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+            os.environ["ENVIRONMENT"] = "production"
+
+            with self.assertRaises(RuntimeError) as ctx:
+                _resolve_supabase_secret_key()
+            self.assertIn("SUPABASE_SECRET_KEY is missing", str(ctx.exception))
+        finally:
+            if orig_secret is not None:
+                os.environ["SUPABASE_SECRET_KEY"] = orig_secret
+            elif "SUPABASE_SECRET_KEY" in os.environ:
+                del os.environ["SUPABASE_SECRET_KEY"]
+            if orig_legacy is not None:
+                os.environ["SUPABASE_SERVICE_ROLE_KEY"] = orig_legacy
+            if orig_env is not None:
+                os.environ["ENVIRONMENT"] = orig_env
+
+
 if __name__ == "__main__":
     unittest.main()

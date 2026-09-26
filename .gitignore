@@ -9,3 +9,5 @@ venv/
 dist/
 *.tsbuildinfo
 scratch/
+apps/api/data/*.json
+*.log

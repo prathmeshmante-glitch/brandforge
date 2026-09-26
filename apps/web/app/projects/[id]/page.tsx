@@ -32,6 +32,7 @@ import { BrandBattleView } from '../../../components/stage-views/BrandBattleView
 import { ConsistencyView } from '../../../components/stage-views/ConsistencyView';
 import { LaunchBrandKitView } from '../../../components/stage-views/LaunchBrandKitView';
 import { BrandChatDrawer } from '../../../components/studio/BrandChatDrawer';
+import { StudioErrorBoundary } from '../../../components/StudioErrorBoundary';
 import { api } from '../../../lib/api';
 import { ProtectedRoute } from '../../../lib/auth-guard';
 
@@ -117,66 +118,69 @@ export default function ProjectStudioPage() {
     loadProjectData();
   }, [projectId]);
 
-  // Connect SSE Stream if backend is running
+  // Authenticated real-time polling for stage progress & brand kit artifacts
   useEffect(() => {
     if (!projectId) return;
 
-    let eventSource: EventSource | null = null;
-    try {
-      const baseUrl = api.getBaseUrl();
-      const streamUrl = `${baseUrl}/api/projects/${projectId}/workflow/stream`;
-      eventSource = new EventSource(streamUrl);
+    let isSubscribed = true;
+    let pollInterval: NodeJS.Timeout | null = null;
 
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          handleSSEEvent(data);
-        } catch (e) {
-          console.error('Error parsing SSE event data:', e);
+    async function pollWorkflowStatus() {
+      try {
+        const kit = await api.getBrandKit(projectId);
+        if (!isSubscribed) return;
+
+        if (kit && kit.artifacts) {
+          const arts = kit.artifacts;
+          setBrandState((prev: any) => ({
+            ...prev,
+            ...arts,
+            visual_direction: arts.visual || arts.visual_direction,
+            selected_directions: {
+              chosen_name: kit.brand_name || arts.launch?.brand_name || prev?.selected_directions?.chosen_name || '',
+              positioning_direction: prev?.selected_directions?.positioning_direction || '',
+            },
+          }));
+
+          const updatedStatuses: Record<string, 'pending' | 'running' | 'review' | 'complete'> = {
+            discover: arts.discovery ? 'complete' : 'pending',
+            position: arts.positioning ? 'complete' : 'pending',
+            persona: arts.personality ? 'complete' : 'pending',
+            naming: arts.naming ? 'complete' : 'pending',
+            visualize: arts.visual || arts.visual_direction ? 'complete' : 'pending',
+            critique: arts.critique ? 'complete' : 'pending',
+            consistency: arts.consistency ? 'complete' : 'pending',
+            launch: arts.launch ? 'complete' : 'pending',
+          };
+
+          // Mark currently executing stage as 'running' based on progress
+          const stageSequence = ['discover', 'position', 'persona', 'naming', 'visualize', 'critique', 'consistency', 'launch'];
+          const firstIncompleteIdx = stageSequence.findIndex((s) => updatedStatuses[s] !== 'complete');
+          if (firstIncompleteIdx !== -1 && kit.status !== 'completed') {
+            updatedStatuses[stageSequence[firstIncompleteIdx]] = 'running';
+          }
+
+          setStageStatuses(updatedStatuses);
+
+          // If all stages are completed, stop polling
+          if (firstIncompleteIdx === -1) {
+            if (pollInterval) clearInterval(pollInterval);
+          }
         }
-      };
-
-      eventSource.onerror = () => {
-        // SSE silently reconnects or fails gracefully
-      };
-    } catch (e) {
-      console.warn('SSE initialization notice:', e);
+      } catch (err) {
+        console.warn('Authenticated polling status notice:', err);
+      }
     }
+
+    // Run immediately, then poll every 2.0s
+    pollWorkflowStatus();
+    pollInterval = setInterval(pollWorkflowStatus, 2000);
 
     return () => {
-      if (eventSource) eventSource.close();
+      isSubscribed = false;
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [projectId]);
-
-  const handleSSEEvent = (data: any) => {
-    const { event, stage, state, target_stage, feedback } = data;
-
-    if (state) {
-      setBrandState((prev: any) => ({ ...prev, ...state }));
-    }
-
-    if (event === 'stage_started' && stage) {
-      setStageStatuses((prev) => ({ ...prev, [stage]: 'running' }));
-      setActiveStageId(stage);
-    } else if (event === 'stage_completed' && stage) {
-      setStageStatuses((prev) => ({ ...prev, [stage]: 'complete' }));
-    } else if (event === 'revision_started') {
-      setRevisionInfo({
-        targetStage: target_stage || 'position',
-        reason: feedback || 'Targeted refinement requested.',
-        isExecuting: true,
-      });
-      if (target_stage) {
-        setStageStatuses((prev) => ({ ...prev, [target_stage]: 'review' }));
-        setActiveStageId(target_stage);
-      }
-    } else if (event === 'revision_completed') {
-      setRevisionInfo((prev) => (prev ? { ...prev, isExecuting: false } : null));
-    } else if (event === 'workflow_completed') {
-      setStageStatuses((prev) => ({ ...prev, launch: 'complete' }));
-      setActiveStageId('launch');
-    }
-  };
 
   // Human Acceptance Action
   const handleAcceptStage = async (nextStageId: string) => {
@@ -539,79 +543,101 @@ export default function ProjectStudioPage() {
             </div>
           )}
 
-          {/* Active Stage Content Rendering */}
-          {activeStageId === 'discover' && (
-            <DiscoveryView
-              discoveryData={brandState.discovery}
-              onAccept={() => handleAcceptStage('position')}
-              onRequestRevision={(fb) => handleRequestRevision('discover', fb)}
-              isLoading={isLoading}
-            />
-          )}
+          {/* Active Stage Content Rendering with Studio Error Boundary */}
+          <StudioErrorBoundary
+            key={activeStageId}
+            stageName={activeStage.name}
+            onRetry={() => {
+              // Reload project artifacts
+              api.getBrandKit(projectId).then((kit) => {
+                if (kit && kit.artifacts) {
+                  setBrandState((prev: any) => ({
+                    ...prev,
+                    ...kit.artifacts,
+                    visual_direction: kit.artifacts.visual || kit.artifacts.visual_direction,
+                  }));
+                }
+              }).catch(() => {});
+            }}
+            onPreviousStage={
+              currentStageIndex > 0
+                ? () => setActiveStageId(STAGES[currentStageIndex - 1].id)
+                : undefined
+            }
+          >
+            {activeStageId === 'discover' && (
+              <DiscoveryView
+                discoveryData={brandState.discovery}
+                onAccept={() => handleAcceptStage('position')}
+                onRequestRevision={(fb) => handleRequestRevision('discover', fb)}
+                isLoading={isLoading}
+              />
+            )}
 
-          {activeStageId === 'position' && (
-            <PositioningView
-              positioningData={brandState.positioning}
-              selectedDirection={brandState.selected_directions?.positioning_direction}
-              onSelectDirection={handleSelectDirection}
-              onAccept={() => handleAcceptStage('persona')}
-              isLoading={isLoading}
-            />
-          )}
+            {activeStageId === 'position' && (
+              <PositioningView
+                positioningData={brandState.positioning}
+                selectedDirection={brandState.selected_directions?.positioning_direction}
+                onSelectDirection={handleSelectDirection}
+                onAccept={() => handleAcceptStage('persona')}
+                isLoading={isLoading}
+              />
+            )}
 
-          {activeStageId === 'persona' && (
-            <PersonalityView
-              personalityData={brandState.personality}
-              onAccept={() => handleAcceptStage('naming')}
-              isLoading={isLoading}
-            />
-          )}
+            {activeStageId === 'persona' && (
+              <PersonalityView
+                personalityData={brandState.personality}
+                onAccept={() => handleAcceptStage('naming')}
+                isLoading={isLoading}
+              />
+            )}
 
-          {activeStageId === 'naming' && (
-            <NamingView
-              namingData={brandState.naming}
-              selectedName={brandState.selected_directions?.chosen_name}
-              onSelectName={handleSelectName}
-              onAccept={() => handleAcceptStage('visualize')}
-              isLoading={isLoading}
-            />
-          )}
+            {activeStageId === 'naming' && (
+              <NamingView
+                namingData={brandState.naming}
+                selectedName={brandState.selected_directions?.chosen_name}
+                onSelectName={handleSelectName}
+                onAccept={() => handleAcceptStage('visualize')}
+                isLoading={isLoading}
+              />
+            )}
 
-          {activeStageId === 'visualize' && (
-            <VisualIdentityView
-              visualData={brandState.visual_direction}
-              brandName={selectedName}
-              onAccept={() => handleAcceptStage('critique')}
-              isLoading={isLoading}
-            />
-          )}
+            {activeStageId === 'visualize' && (
+              <VisualIdentityView
+                visualData={brandState.visual_direction}
+                brandName={selectedName}
+                onAccept={() => handleAcceptStage('critique')}
+                isLoading={isLoading}
+              />
+            )}
 
-          {activeStageId === 'critique' && (
-            <BrandBattleView
-              critiqueData={brandState.critique}
-              onAccept={() => handleAcceptStage('consistency')}
-              onRequestRevision={(fb) => handleRequestRevision('position', fb)}
-              isLoading={isLoading}
-            />
-          )}
+            {activeStageId === 'critique' && (
+              <BrandBattleView
+                critiqueData={brandState.critique}
+                onAccept={() => handleAcceptStage('consistency')}
+                onRequestRevision={(fb) => handleRequestRevision('position', fb)}
+                isLoading={isLoading}
+              />
+            )}
 
-          {activeStageId === 'consistency' && (
-            <ConsistencyView
-              consistencyData={brandState.consistency}
-              onAccept={() => handleAcceptStage('launch')}
-              onRequestRevision={(fb) => handleRequestRevision('naming', fb)}
-              isLoading={isLoading}
-            />
-          )}
+            {activeStageId === 'consistency' && (
+              <ConsistencyView
+                consistencyData={brandState.consistency}
+                onAccept={() => handleAcceptStage('launch')}
+                onRequestRevision={(fb) => handleRequestRevision('naming', fb)}
+                isLoading={isLoading}
+              />
+            )}
 
-          {activeStageId === 'launch' && (
-            <LaunchBrandKitView
-              launchData={brandState.launch}
-              brandState={brandState}
-              onExportPDF={handleExportPDF}
-              isLoading={isLoading}
-            />
-          )}
+            {activeStageId === 'launch' && (
+              <LaunchBrandKitView
+                launchData={brandState.launch}
+                brandState={brandState}
+                onExportPDF={handleExportPDF}
+                isLoading={isLoading}
+              />
+            )}
+          </StudioErrorBoundary>
         </main>
 
         {/* Right Column: AI Context Panel */}

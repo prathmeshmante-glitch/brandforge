@@ -28,22 +28,38 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
     );
   }
 
-  const {
-    overall_consistency_score = 94,
-    checks = [],
-    violations = [],
-  } = consistencyData;
+  // Canonical Schema Extraction
+  // ConsistencyGuardianOutput provides: overall_consistency (int), checks: List[{area, status, reason}], required_revisions: List[{target, reason, priority}]
+  const overallScore =
+    typeof consistencyData.overall_consistency === 'number'
+      ? consistencyData.overall_consistency
+      : typeof consistencyData.overall_consistency_score === 'number'
+      ? consistencyData.overall_consistency_score
+      : 88;
+
+  const rawChecks = Array.isArray(consistencyData.checks) ? consistencyData.checks : [];
 
   const defaultChecks = [
-    { relationship: 'Name ↔ Positioning', status: 'PASS', details: 'Brand name matches strategic position without category dissonance.' },
-    { relationship: 'Name ↔ Personality', status: 'PASS', details: 'Name tonal qualities evoke the creator archetype.' },
-    { relationship: 'Tagline ↔ Personality', status: 'PASS', details: 'Direct, technical, and confident voice principle upheld.' },
-    { relationship: 'Visual ↔ Audience', status: 'PASS', details: 'Dark obsidian and refined indigo accents fit the intended demographic.' },
-    { relationship: 'Voice ↔ Personality', status: 'PASS', details: 'Zero hype filler matches core principles.' },
-    { relationship: 'Launch Message ↔ Strategy', status: 'PASS', details: 'Reflects unique differentiator and proof points.' },
+    { area: 'Name ↔ Positioning', status: 'pass', reason: 'Brand name matches strategic position without category dissonance.' },
+    { area: 'Name ↔ Personality', status: 'pass', reason: 'Name tonal qualities evoke the intended brand archetype.' },
+    { area: 'Tagline ↔ Personality', status: 'pass', reason: 'Direct, technical, and confident voice principle upheld.' },
+    { area: 'Visual ↔ Audience', status: 'pass', reason: 'Obsidian and refined indigo accents fit the intended demographic.' },
+    { area: 'Voice ↔ Personality', status: 'pass', reason: 'Zero hype filler matches core principles.' },
+    { area: 'Launch Message ↔ Strategy', status: 'pass', reason: 'Reflects unique differentiator and proof points.' },
   ];
 
-  const activeChecks = checks.length > 0 ? checks : defaultChecks;
+  const activeChecks = rawChecks.length > 0 ? rawChecks : defaultChecks;
+
+  // Revisions / Violations
+  const rawRevisions = Array.isArray(consistencyData.required_revisions)
+    ? consistencyData.required_revisions
+    : Array.isArray(consistencyData.violations)
+    ? consistencyData.violations.map((v: any) => ({
+        target: 'System',
+        reason: typeof v === 'string' ? v : v.description || v.reason || JSON.stringify(v),
+        priority: 'medium',
+      }))
+    : [];
 
   const handleRevisionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +123,7 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
             COHERENCE SCORE
           </span>
           <b style={{ fontFamily: 'Georgia, serif', fontSize: '28px', color: '#c7f1d8', fontWeight: 500 }}>
-            {overall_consistency_score}%
+            {overallScore}%
           </b>
         </div>
       </div>
@@ -119,8 +135,11 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
           {activeChecks.map((item: any, idx: number) => {
-            const isPass = (item.status || 'PASS').toUpperCase() === 'PASS';
+            const checkStatus = (item.status || 'pass').toLowerCase();
+            const isPass = checkStatus === 'pass';
             const statusColor = isPass ? 'var(--sage)' : 'var(--amber)';
+            const areaName = item.area || item.relationship || `Check 0${idx + 1}`;
+            const reasonText = item.reason || item.details || item.explanation || 'Verified cross-stage alignment.';
 
             return (
               <div
@@ -139,11 +158,11 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                     <span style={{ font: '10px monospace', color: '#fff', fontWeight: 600 }}>
-                      {item.relationship || `Check #${idx + 1}`}
+                      {areaName}
                     </span>
                   </div>
                   <p style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: 1.5, margin: 0 }}>
-                    {item.details || item.explanation || 'Verified cross-stage alignment.'}
+                    {reasonText}
                   </p>
                 </div>
 
@@ -161,6 +180,7 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
                     alignItems: 'center',
                     gap: '4px',
                     flexShrink: 0,
+                    textTransform: 'uppercase',
                   }}
                 >
                   {isPass ? (
@@ -179,8 +199,8 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
         </div>
       </div>
 
-      {/* Violations List (if any) */}
-      {violations.length > 0 && (
+      {/* Required Revisions / Contradictions (if any) */}
+      {rawRevisions.length > 0 && (
         <div
           style={{
             background: 'rgba(255, 107, 94, 0.08)',
@@ -190,15 +210,26 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
           }}
         >
           <span style={{ font: '10px monospace', color: 'var(--coral)', letterSpacing: '0.1em', fontWeight: 700, display: 'block', marginBottom: '8px' }}>
-            SYSTEM ALIGNMENT VIOLATIONS DETECTED:
+            CROSS-STAGE REVISIONS REQUIRED:
           </span>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {violations.map((v: any, idx: number) => (
-              <li key={idx} style={{ fontSize: '12px', color: '#ffd2cc', display: 'flex', gap: '6px' }}>
-                <XCircle size={14} color="var(--coral)" style={{ flexShrink: 0, marginTop: '2px' }} />
-                <span>{typeof v === 'string' ? v : v.description || v.reason}</span>
-              </li>
-            ))}
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {rawRevisions.map((rev: any, idx: number) => {
+              const target = rev.target || 'General';
+              const reason = rev.reason || (typeof rev === 'string' ? rev : JSON.stringify(rev));
+              const priority = rev.priority || 'medium';
+
+              return (
+                <li key={idx} style={{ fontSize: '12px', color: '#ffd2cc', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <XCircle size={14} color="var(--coral)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ color: '#fff', textTransform: 'uppercase', font: '10px monospace' }}>
+                      [{target}] ({priority} priority):
+                    </strong>{' '}
+                    <span>{reason}</span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}

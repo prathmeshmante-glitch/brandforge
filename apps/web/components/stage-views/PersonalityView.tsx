@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, Heart, Shield, Ban, ArrowRight, MessageSquare } from 'lucide-react';
+import { Sparkles, Heart, Shield, Ban, ArrowRight, MessageSquare, Check } from 'lucide-react';
 
 interface PersonalityViewProps {
   personalityData: any;
@@ -23,14 +23,47 @@ export const PersonalityView: React.FC<PersonalityViewProps> = ({
     );
   }
 
-  const {
-    archetype = 'Creator / Visionary',
-    traits = [],
-    tone = [],
-    emotional_goal = 'Empowered engineering clarity and trust',
-    brand_principles = [],
-    avoid_traits = [],
-  } = personalityData;
+  // Canonical Schema Normalization
+  const archetype =
+    personalityData.brand_archetype ||
+    personalityData.archetype ||
+    'Creator / Visionary';
+
+  const emotionalGoal =
+    personalityData.emotional_goal ||
+    'Empowered engineering clarity and trust';
+
+  // personality can be a list of PersonalityTrait {trait, reason} or strings, or traits array
+  const rawTraits = Array.isArray(personalityData.personality)
+    ? personalityData.personality
+    : Array.isArray(personalityData.traits)
+    ? personalityData.traits
+    : [];
+
+  // tone can be ToneGuide {do: string[], avoid: string[]} or an array of strings
+  let toneDo: string[] = [];
+  let toneAvoid: string[] = [];
+
+  if (personalityData.tone && typeof personalityData.tone === 'object' && !Array.isArray(personalityData.tone)) {
+    toneDo = Array.isArray(personalityData.tone.do) ? personalityData.tone.do : [];
+    toneAvoid = Array.isArray(personalityData.tone.avoid) ? personalityData.tone.avoid : [];
+  } else if (Array.isArray(personalityData.tone)) {
+    toneDo = personalityData.tone;
+  }
+
+  // avoid_traits can be provided separately or from tone.avoid
+  const avoidTraits = Array.isArray(personalityData.avoid_traits)
+    ? personalityData.avoid_traits
+    : toneAvoid.length > 0
+    ? toneAvoid
+    : ['Corporate jargon', 'Aggressive urgency', 'Vague buzzwords'];
+
+  // principles can be principles or brand_principles
+  const principles = Array.isArray(personalityData.principles)
+    ? personalityData.principles
+    : Array.isArray(personalityData.brand_principles)
+    ? personalityData.brand_principles
+    : ['Uncompromising clarity', 'Technical precision', 'Radical transparency'];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -85,7 +118,7 @@ export const PersonalityView: React.FC<PersonalityViewProps> = ({
             </span>
           </div>
           <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', color: '#ffebc4', margin: '8px 0 10px', fontWeight: 500, fontStyle: 'italic' }}>
-            "{emotional_goal}"
+            "{emotionalGoal}"
           </h3>
           <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, margin: 0 }}>
             The target sensation the brand leaves with founders, users, and partners across every touchpoint.
@@ -106,25 +139,38 @@ export const PersonalityView: React.FC<PersonalityViewProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--subtle)', marginBottom: '14px' }}>
             <Sparkles size={14} color="#b4a5ff" />
             <span style={{ font: '9px monospace', letterSpacing: '0.12em', fontWeight: 700, color: 'var(--muted)' }}>
-              KEY PERSONALITY TRAITS
+              KEY PERSONALITY TRAITS & STRATEGIC REASONS
             </span>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {traits.map((trait: string, idx: number) => (
-              <span
-                key={idx}
-                style={{
-                  font: '10px monospace',
-                  color: '#d6cdff',
-                  background: 'rgba(124, 92, 255, 0.12)',
-                  border: '1px solid rgba(124, 92, 255, 0.25)',
-                  borderRadius: '999px',
-                  padding: '5px 12px',
-                }}
-              >
-                {trait}
-              </span>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {rawTraits.map((t: any, idx: number) => {
+              const traitName = typeof t === 'string' ? t : t.trait || `Trait ${idx + 1}`;
+              const traitReason = typeof t === 'object' ? t.reason : '';
+
+              return (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span
+                      style={{
+                        font: '10px monospace',
+                        color: '#d6cdff',
+                        background: 'rgba(124, 92, 255, 0.12)',
+                        border: '1px solid rgba(124, 92, 255, 0.25)',
+                        borderRadius: '999px',
+                        padding: '4px 10px',
+                      }}
+                    >
+                      {traitName}
+                    </span>
+                  </div>
+                  {traitReason && (
+                    <span style={{ fontSize: '11px', color: 'var(--muted)', paddingLeft: '4px' }}>
+                      {traitReason}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -139,24 +185,15 @@ export const PersonalityView: React.FC<PersonalityViewProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--subtle)', marginBottom: '14px' }}>
             <MessageSquare size={14} color="var(--indigo)" />
             <span style={{ font: '9px monospace', letterSpacing: '0.12em', fontWeight: 700, color: 'var(--muted)' }}>
-              TONE OF VOICE DESCRIPTORS
+              COMMUNICATION GUIDELINES (DO)
             </span>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {tone.map((t: string, idx: number) => (
-              <span
-                key={idx}
-                style={{
-                  font: '10px monospace',
-                  color: '#c2b8ff',
-                  background: 'rgba(124, 92, 255, 0.08)',
-                  border: '1px solid rgba(124, 92, 255, 0.2)',
-                  borderRadius: '999px',
-                  padding: '5px 12px',
-                }}
-              >
-                {t}
-              </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {toneDo.map((t: string, idx: number) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '12px', color: '#c2b8ff' }}>
+                <Check size={14} color="var(--sage)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                <span>{t}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -179,10 +216,10 @@ export const PersonalityView: React.FC<PersonalityViewProps> = ({
             </span>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {brand_principles.map((principle: string, idx: number) => (
+            {principles.map((principle: any, idx: number) => (
               <li key={idx} style={{ fontSize: '12px', color: '#e2dcff', display: 'flex', gap: '8px' }}>
                 <span style={{ color: 'var(--sage)' }}>•</span>
-                <span>{principle}</span>
+                <span>{typeof principle === 'string' ? principle : JSON.stringify(principle)}</span>
               </li>
             ))}
           </ul>
@@ -203,10 +240,10 @@ export const PersonalityView: React.FC<PersonalityViewProps> = ({
             </span>
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {avoid_traits.map((avoid: string, idx: number) => (
+            {avoidTraits.map((avoid: any, idx: number) => (
               <li key={idx} style={{ fontSize: '12px', color: '#eed2cf', display: 'flex', gap: '8px' }}>
                 <span style={{ color: 'var(--coral)' }}>✕</span>
-                <span>{avoid}</span>
+                <span>{typeof avoid === 'string' ? avoid : JSON.stringify(avoid)}</span>
               </li>
             ))}
           </ul>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Palette, Type, Layout, ArrowRight, Layers, Sparkles } from 'lucide-react';
+import { Palette, Type, Layout, ArrowRight, Layers, Sparkles, ShieldBan } from 'lucide-react';
 
 interface VisualIdentityViewProps {
   visualData: any;
@@ -25,14 +25,83 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
     );
   }
 
-  const {
-    color_palette = [],
-    typography = {},
-    composition = 'Structured grid layout with generous obsidian whitespace and subtle luminescence.',
-    shape_language = 'Refined 12px-18px corner radii with 1px frosted translucent borders.',
-    logo_direction = 'Diamond geometric spark mark with letterspaced serif wordmark.',
-    visual_mood = 'Neo-Editorial Dark Obsidian & High-Tech Precision',
-  } = visualData;
+  // Canonical Schema Extraction
+  // CreativeDirectorOutput has visual_direction and logo_direction
+  const visDir = visualData.visual_direction || visualData;
+  const logoDir = visualData.logo_direction || {};
+
+  // Mood
+  const moodList = Array.isArray(visDir.mood)
+    ? visDir.mood
+    : Array.isArray(visDir.visual_mood)
+    ? visDir.visual_mood
+    : typeof visDir.visual_mood === 'string'
+    ? [visDir.visual_mood]
+    : ['Neo-Editorial Obsidian', 'High-Tech Precision', 'Quiet Authority'];
+  const visualMoodText = moodList.join(' • ');
+
+  // Colors: Can be color_direction (hex strings) or color_palette (objects)
+  const rawColors = Array.isArray(visDir.color_direction)
+    ? visDir.color_direction
+    : Array.isArray(visDir.color_palette)
+    ? visDir.color_palette
+    : ['#0A0A0C', '#15161C', '#7C5CFF', '#B4A5FF', '#F5F5F7'];
+
+  const normalizedSwatches = rawColors.map((c: any, idx: number) => {
+    if (typeof c === 'string') {
+      const isHex = c.startsWith('#');
+      return {
+        hex: isHex ? c : '#7C5CFF',
+        name: isHex ? `Swatch 0${idx + 1}` : c,
+        role: idx === 0 ? 'Base / Canvas' : idx === 1 ? 'Surface' : idx === 2 ? 'Primary Accent' : 'Highlight',
+      };
+    } else if (c && typeof c === 'object') {
+      return {
+        hex: c.hex || '#7C5CFF',
+        name: c.name || `Swatch 0${idx + 1}`,
+        role: c.role || 'Accent',
+        usage: c.usage || '',
+      };
+    }
+    return { hex: '#7C5CFF', name: 'Accent', role: 'Primary' };
+  });
+
+  // Typography
+  let headerFont = 'Editorial Serif (Georgia / Canela)';
+  let bodyFont = 'Inter / Modern System Sans';
+
+  if (Array.isArray(visDir.typography) && visDir.typography.length > 0) {
+    headerFont = typeof visDir.typography[0] === 'string' ? visDir.typography[0] : headerFont;
+    if (visDir.typography.length > 1) {
+      bodyFont = typeof visDir.typography[1] === 'string' ? visDir.typography[1] : bodyFont;
+    }
+  } else if (visDir.typography && typeof visDir.typography === 'object') {
+    headerFont = visDir.typography.header_font || headerFont;
+    bodyFont = visDir.typography.body_font || bodyFont;
+  }
+
+  // Composition
+  const compositionText = Array.isArray(visDir.composition)
+    ? visDir.composition.join(' ')
+    : typeof visDir.composition === 'string'
+    ? visDir.composition
+    : 'Structured grid layout with generous obsidian whitespace and subtle luminescence.';
+
+  // Shape Language
+  const shapeLanguageText = Array.isArray(visDir.shape_language)
+    ? visDir.shape_language.join(' ')
+    : typeof visDir.shape_language === 'string'
+    ? visDir.shape_language
+    : 'Refined 12px-18px corner radii with 1px frosted translucent borders.';
+
+  // Logo Direction
+  const logoConcept = typeof logoDir === 'string'
+    ? logoDir
+    : logoDir.concept || 'Precision geometric monogram with restrained letterspaced wordmark.';
+  const logoRationale = typeof logoDir === 'object' && logoDir.rationale ? logoDir.rationale : '';
+
+  // Avoid list
+  const avoidList = Array.isArray(visDir.avoid) ? visDir.avoid : [];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
@@ -80,8 +149,8 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
             <span style={{ font: '9px monospace', color: '#b4a5ff', letterSpacing: '0.12em', display: 'block', marginBottom: '2px' }}>
               DEFINED VISUAL MOOD
             </span>
-            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', color: '#fff', margin: 0, fontWeight: 500 }}>
-              {visual_mood}
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', color: '#fff', margin: 0, fontWeight: 500 }}>
+              {visualMoodText}
             </h3>
           </div>
         </div>
@@ -90,10 +159,10 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
       {/* Color Palette Swatches */}
       <div>
         <div className="section-index" style={{ marginBottom: '14px' }}>
-          COLOR PALETTE / {color_palette.length} CURATED SWATCHES
+          COLOR PALETTE / {normalizedSwatches.length} DESIGN SWATCHES
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
-          {color_palette.map((color: any, idx: number) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
+          {normalizedSwatches.map((color: any, idx: number) => (
             <div
               key={idx}
               style={{
@@ -105,7 +174,7 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
             >
               <div
                 style={{
-                  height: '90px',
+                  height: '84px',
                   backgroundColor: color.hex,
                   position: 'relative',
                   padding: '10px',
@@ -127,17 +196,12 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
                 </span>
               </div>
               <div style={{ padding: '14px' }}>
-                <b style={{ fontSize: '13px', color: '#fff', display: 'block', marginBottom: '2px' }}>
+                <b style={{ fontSize: '12px', color: '#fff', display: 'block', marginBottom: '2px' }}>
                   {color.name}
                 </b>
-                <span style={{ font: '9px monospace', color: 'var(--subtle)', display: 'block', marginBottom: '6px' }}>
-                  ROLE: {color.role || 'Accent'}
+                <span style={{ font: '9px monospace', color: 'var(--subtle)', display: 'block' }}>
+                  {color.role}
                 </span>
-                {color.usage && (
-                  <p style={{ fontSize: '11px', color: 'var(--muted)', lineHeight: 1.4, margin: 0 }}>
-                    {color.usage}
-                  </p>
-                )}
               </div>
             </div>
           ))}
@@ -162,14 +226,14 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
               PRIMARY DISPLAY FONT
             </span>
             <div style={{ font: '11px monospace', color: '#b4a5ff', marginBottom: '14px' }}>
-              {typography.header_font || 'Editorial Serif (Georgia / Canela)'}
+              {headerFont}
             </div>
             <div style={{ background: '#0a0a0c', padding: '20px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-              <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '32px', fontWeight: 500, letterSpacing: '-0.04em', margin: '0 0 6px', color: '#fff' }}>
+              <h1 style={{ fontFamily: 'Georgia, serif', fontSize: '30px', fontWeight: 500, letterSpacing: '-0.04em', margin: '0 0 6px', color: '#fff' }}>
                 {brandName}
               </h1>
               <p style={{ font: '10px monospace', color: 'var(--subtle)', margin: 0 }}>
-                Display Title Scale (32px Medium)
+                Display Title Scale (30px Medium)
               </p>
             </div>
           </div>
@@ -186,7 +250,7 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
               BODY & UI FONT
             </span>
             <div style={{ font: '11px monospace', color: '#b4a5ff', marginBottom: '14px' }}>
-              {typography.body_font || 'Inter Sans / Modern System UI'}
+              {bodyFont}
             </div>
             <div style={{ background: '#0a0a0c', padding: '20px', borderRadius: '10px', border: '1px solid var(--border)' }}>
               <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text)', margin: '0 0 8px' }}>
@@ -200,7 +264,7 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
         </div>
       </div>
 
-      {/* Composition & Shape Geometry */}
+      {/* Composition, Shape Language & Logo Concept Bento */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
         <div
           style={{
@@ -217,7 +281,7 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
             </span>
           </div>
           <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.5, margin: 0 }}>
-            {composition}
+            {compositionText}
           </p>
         </div>
 
@@ -236,7 +300,7 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
             </span>
           </div>
           <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.5, margin: 0 }}>
-            {shape_language}
+            {shapeLanguageText}
           </p>
         </div>
 
@@ -251,14 +315,54 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--sage)', marginBottom: '8px' }}>
             <Palette size={15} />
             <span style={{ font: '9px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
-              LOGO DIRECTION
+              LOGO CONCEPT
             </span>
           </div>
-          <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.5, margin: 0 }}>
-            {logo_direction}
+          <p style={{ fontSize: '12px', color: '#fff', lineHeight: 1.5, margin: '0 0 4px', fontWeight: 500 }}>
+            {logoConcept}
           </p>
+          {logoRationale && (
+            <p style={{ fontSize: '11px', color: 'var(--subtle)', margin: 0, fontStyle: 'italic' }}>
+              {logoRationale}
+            </p>
+          )}
         </div>
       </div>
+
+      {/* Visual Clichés to Avoid (if present) */}
+      {avoidList.length > 0 && (
+        <div
+          style={{
+            background: 'rgba(255, 107, 94, 0.04)',
+            border: '1px solid rgba(255, 107, 94, 0.2)',
+            borderRadius: '14px',
+            padding: '16px 20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--coral)', marginBottom: '8px' }}>
+            <ShieldBan size={15} />
+            <span style={{ font: '9px monospace', letterSpacing: '0.12em', fontWeight: 700 }}>
+              VISUAL CLICHÉS TO AVOID
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {avoidList.map((item: any, idx: number) => (
+              <span
+                key={idx}
+                style={{
+                  font: '10px monospace',
+                  color: '#ffd2cc',
+                  background: 'rgba(255, 107, 94, 0.1)',
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                }}
+              >
+                ✕ {typeof item === 'string' ? item : JSON.stringify(item)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div
         style={{

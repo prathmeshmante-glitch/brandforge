@@ -4,14 +4,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Sparkles,
   Send,
-  MessageSquare,
   X,
-  ChevronDown,
-  Wand2,
-  ShieldAlert,
-  CheckCircle2,
-  Terminal,
+  Compass,
   Zap,
+  HelpCircle,
+  Lightbulb,
+  AlertCircle,
+  ArrowRight,
+  ShieldAlert,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 
@@ -22,11 +22,25 @@ interface ToolExecution {
   details?: any;
 }
 
+interface MentorData {
+  intent?: string;
+  response_type?: string;
+  answer?: string;
+  key_insight?: string;
+  assumptions?: string[];
+  questions?: string[];
+  recommended_next_step?: string;
+  tool_action?: string;
+  reasoning_summary?: string;
+  affected_stages?: string[];
+}
+
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   tool_calls?: ToolExecution[];
+  mentor_data?: MentorData;
   created_at?: string;
 }
 
@@ -37,12 +51,13 @@ interface BrandChatDrawerProps {
 }
 
 const QUICK_PROMPTS = [
-  'Give me 5 stronger names',
-  'Challenge this brand with Brand Battle',
-  'Check cross-stage consistency',
-  'Make the brand more premium',
-  'Rewrite the launch copy and tagline',
-  'Why did you choose this positioning?',
+  'Diagnose my business idea',
+  'Challenge my positioning',
+  'What assumption is weakest?',
+  'What should I validate next?',
+  'Teach me why this positioning works',
+  'Challenge this brand',
+  'Show current strategy',
 ];
 
 export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
@@ -109,6 +124,7 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
         role: 'assistant',
         content: response.reply,
         tool_calls: response.tools_executed || [],
+        mentor_data: response.mentor || undefined,
         created_at: new Date().toISOString(),
       };
 
@@ -121,7 +137,7 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
       const errorMsg: ChatMessage = {
         id: `err-${Date.now()}`,
         role: 'assistant',
-        content: `Error executing request: ${err.message || 'The studio assistant encountered an unexpected error.'}`,
+        content: `Consultation note: ${err.message || 'The mentor service encountered an unexpected error.'}`,
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -158,8 +174,8 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
           }}
           className="hover:scale-105 active:scale-95"
         >
-          <Sparkles size={16} />
-          <span>Brand Intelligence Assistant</span>
+          <Compass size={16} />
+          <span>Brand Strategy Mentor</span>
           <span
             style={{
               background: 'rgba(255,255,255,0.25)',
@@ -168,7 +184,7 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
               fontSize: '10px',
             }}
           >
-            AI
+            STUDIO
           </span>
         </button>
       )}
@@ -180,9 +196,9 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
             position: 'fixed',
             bottom: '24px',
             right: '24px',
-            width: '420px',
+            width: '450px',
             maxWidth: 'calc(100vw - 32px)',
-            height: '620px',
+            height: '660px',
             maxHeight: 'calc(100vh - 48px)',
             background: 'linear-gradient(160deg, #121319ee, #0b0c10fa)',
             backdropFilter: 'blur(20px)',
@@ -209,9 +225,9 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
                   background: 'rgba(124, 92, 255, 0.15)',
                   border: '1px solid rgba(124, 92, 255, 0.3)',
                   display: 'flex',
@@ -220,14 +236,14 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
                   color: 'var(--indigo)',
                 }}
               >
-                <Sparkles size={16} />
+                <Compass size={18} />
               </div>
               <div>
                 <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#fff' }}>
-                  Brand Intelligence Assistant
+                  Brand Strategy Mentor
                 </h4>
                 <span style={{ fontSize: '10px', color: 'var(--subtle)' }}>
-                  Scoping project: <b style={{ color: 'var(--text)' }}>{projectName}</b>
+                  Business + Brand Strategy • <b style={{ color: 'var(--text)' }}>{projectName}</b>
                 </span>
               </div>
             </div>
@@ -269,9 +285,9 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
                   background: 'rgba(255, 255, 255, 0.04)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                   borderRadius: '999px',
-                  padding: '4px 10px',
+                  padding: '5px 12px',
                   color: 'var(--muted)',
-                  fontSize: '10px',
+                  fontSize: '11px',
                   cursor: 'pointer',
                   flexShrink: 0,
                   transition: 'all 0.15s',
@@ -306,86 +322,103 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
                   gap: '10px',
                 }}
               >
-                <Terminal size={28} style={{ color: 'var(--indigo)', opacity: 0.6 }} />
-                <p style={{ margin: 0, fontSize: '12px', fontWeight: 500, color: 'var(--muted)' }}>
-                  BrandForge Studio Assistant Ready
+                <Compass size={32} style={{ color: 'var(--indigo)', opacity: 0.6 }} />
+                <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#fff' }}>
+                  Brand Strategy Mentor
                 </p>
-                <p style={{ margin: 0, fontSize: '11px', lineHeight: 1.5, maxWidth: '280px' }}>
-                  Ask questions about your brand positioning, request targeted revisions, or trigger Brand Battle critiques.
+                <p style={{ margin: 0, fontSize: '11px', lineHeight: 1.5, maxWidth: '300px', color: 'var(--muted)' }}>
+                  Ask for a diagnosis of your business thesis, challenge weak assumptions, or evaluate downstream branding decisions.
                 </p>
               </div>
             ) : (
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                    gap: '4px',
-                  }}
-                >
+              messages.map((msg) => {
+                const mentor = msg.mentor_data;
+                const isUser = msg.role === 'user';
+
+                return (
                   <div
+                    key={msg.id}
                     style={{
-                      maxWidth: '88%',
-                      padding: '10px 14px',
-                      borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
-                      background:
-                        msg.role === 'user'
-                          ? 'linear-gradient(135deg, #7c5cff, #6540f5)'
-                          : 'rgba(255, 255, 255, 0.05)',
-                      border: msg.role === 'user' ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
-                      color: msg.role === 'user' ? '#fff' : 'var(--text)',
-                      fontSize: '12px',
-                      lineHeight: 1.5,
-                      whiteSpace: 'pre-wrap',
-                      boxShadow: msg.role === 'user' ? '0 4px 12px rgba(124, 92, 255, 0.3)' : 'none',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: isUser ? 'flex-end' : 'flex-start',
+                      gap: '4px',
                     }}
                   >
-                    {/* Tool Badges */}
-                    {msg.tool_calls && msg.tool_calls.length > 0 && (
-                      <div
-                        style={{
-                          marginBottom: '8px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                        }}
-                      >
-                        {msg.tool_calls.map((tc, tIdx) => (
-                          <div
-                            key={tIdx}
-                            style={{
-                              background: 'rgba(124, 92, 255, 0.12)',
-                              border: '1px solid rgba(124, 92, 255, 0.25)',
-                              borderRadius: '6px',
-                              padding: '4px 8px',
-                              fontSize: '10px',
-                              color: 'var(--indigo)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                            }}
-                          >
-                            <Zap size={11} />
-                            <span>
-                              Tool executed: <b>{tc.tool}</b> ({tc.status})
+                    <div
+                      style={{
+                        maxWidth: '92%',
+                        padding: '12px 16px',
+                        borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                        background: isUser
+                          ? 'linear-gradient(135deg, #7c5cff, #6540f5)'
+                          : 'rgba(255, 255, 255, 0.05)',
+                        border: isUser ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: isUser ? '#fff' : 'var(--text)',
+                        fontSize: '12px',
+                        lineHeight: 1.55,
+                        boxShadow: isUser ? '0 4px 12px rgba(124, 92, 255, 0.3)' : 'none',
+                      }}
+                    >
+                      {/* Strategic Action Card (if tools were executed) */}
+                      {msg.tool_calls && msg.tool_calls.length > 0 && (
+                        <div
+                          style={{
+                            marginBottom: '10px',
+                            background: 'rgba(124, 92, 255, 0.12)',
+                            border: '1px solid rgba(124, 92, 255, 0.3)',
+                            borderRadius: '10px',
+                            padding: '10px 12px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--indigo)', marginBottom: '4px' }}>
+                            <Zap size={13} />
+                            <span style={{ font: '9px monospace', letterSpacing: '0.1em', fontWeight: 700 }}>
+                              STRATEGIC ACTION EXECUTED
                             </span>
                           </div>
-                        ))}
+                          {msg.tool_calls.map((tc, tIdx) => (
+                            <div key={tIdx} style={{ fontSize: '11px', color: '#e2dcff' }}>
+                              <b>{tc.tool}</b>: {tc.summary}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Main Message Content */}
+                      <div style={{ whiteSpace: 'pre-wrap' }}>
+                        {msg.content}
                       </div>
-                    )}
-                    {msg.content}
+
+                      {/* Structured Mentor Cards (Key Insight, Next Step, Downstream) */}
+                      {mentor && !isUser && (
+                        <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '10px' }}>
+                          {mentor.key_insight && (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', fontSize: '11px', color: '#c7f1d8' }}>
+                              <Lightbulb size={13} color="var(--sage)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                              <span><b>Key Insight:</b> {mentor.key_insight}</span>
+                            </div>
+                          )}
+
+                          {mentor.recommended_next_step && (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', fontSize: '11px', color: '#d6cdff' }}>
+                              <ArrowRight size={13} color="var(--indigo)" style={{ flexShrink: 0, marginTop: '2px' }} />
+                              <span><b>Next Step:</b> {mentor.recommended_next_step}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
 
             {isSending && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--indigo)', padding: '6px' }}>
                 <Sparkles size={14} className="animate-spin" />
                 <span style={{ fontSize: '11px', fontFamily: 'monospace' }}>
-                  CONSULTING BRAND INTELLIGENCE ENGINE...
+                  STRATEGY MENTOR EVALUATING...
                 </span>
               </div>
             )}
@@ -405,7 +438,7 @@ export const BrandChatDrawer: React.FC<BrandChatDrawerProps> = ({
           >
             <input
               type="text"
-              placeholder="Ask assistant or request a brand revision..."
+              placeholder="Ask for a diagnosis, decision, or challenge..."
               value={inputValue}
               disabled={isSending}
               onChange={(e) => setInputValue(e.target.value)}
