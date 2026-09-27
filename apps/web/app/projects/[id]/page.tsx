@@ -67,6 +67,7 @@ export default function ProjectStudioPage() {
   });
 
   const [isStartingPipeline, setIsStartingPipeline] = useState<boolean>(false);
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [revisionInfo, setRevisionInfo] = useState<{ targetStage: string; reason: string; isExecuting: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -130,7 +131,42 @@ export default function ProjectStudioPage() {
       }
     }
     loadProjectData();
-  }, [projectId]);
+  }, [projectId, activeRunId]);
+
+  const pollRunAndKit = async (runId: string) => {
+    const workflow = await api.getWorkflowStatus(projectId, runId);
+    const statusMap: Record<string, 'pending' | 'running' | 'review' | 'complete'> = {
+      discover: 'pending', position: 'pending', persona: 'pending', naming: 'pending',
+      visualize: 'pending', critique: 'pending', consistency: 'pending', launch: 'pending',
+    };
+    const stageMap: Record<string, string> = {
+      discovery: 'discover', positioning: 'position', personality: 'persona', naming: 'naming',
+      visual: 'visualize', critique: 'critique', consistency: 'consistency', launch: 'launch',
+    };
+    (workflow?.stages || []).forEach((stage: any) => {
+      const uiStage = stageMap[stage.stage];
+      if (uiStage) statusMap[uiStage] = stage.status === 'completed' ? 'complete' : stage.status === 'running' ? 'running' : stage.status === 'failed' ? 'review' : 'pending';
+    });
+    setStageStatuses(statusMap);
+
+    const kit = await api.getBrandKit(projectId);
+    if (kit?.artifacts) {
+      const arts = kit.artifacts;
+      setBrandState((prev: any) => ({
+        ...prev, ...arts, visual_direction: arts.visual || arts.visual_direction,
+        selected_directions: {
+          ...prev?.selected_directions,
+          chosen_name: kit.brand_name || arts.launch?.brand_name || prev?.selected_directions?.chosen_name || '',
+        },
+      }));
+    }
+    if (workflow?.status === 'completed') {
+      setStageStatuses((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, 'complete'])) as typeof prev);
+      setActiveStageId('launch');
+      return true;
+    }
+    return false;
+  };
 
   // Authenticated real-time polling for stage progress & brand kit artifacts
   useEffect(() => {
@@ -141,48 +177,17 @@ export default function ProjectStudioPage() {
 
     async function pollWorkflowStatus() {
       try {
-        const kit = await api.getBrandKit(projectId);
-        if (!isSubscribed) return;
-
-        if (kit && kit.artifacts) {
-          const arts = kit.artifacts;
-          setBrandState((prev: any) => ({
-            ...prev,
-            ...arts,
-            visual_direction: arts.visual || arts.visual_direction,
-            selected_directions: {
-              chosen_name: kit.brand_name || arts.launch?.brand_name || prev?.selected_directions?.chosen_name || '',
-              positioning_direction: prev?.selected_directions?.positioning_direction || '',
-            },
-          }));
-
-          const updatedStatuses: Record<string, 'pending' | 'running' | 'review' | 'complete'> = {
-            discover: arts.discovery ? 'complete' : 'pending',
-            position: arts.positioning ? 'complete' : 'pending',
-            persona: arts.personality ? 'complete' : 'pending',
-            naming: arts.naming ? 'complete' : 'pending',
-            visualize: arts.visual || arts.visual_direction ? 'complete' : 'pending',
-            critique: arts.critique ? 'complete' : 'pending',
-            consistency: arts.consistency ? 'complete' : 'pending',
-            launch: arts.launch ? 'complete' : 'pending',
-          };
-
-          // Mark currently executing stage as 'running' based on progress
-          const stageSequence = ['discover', 'position', 'persona', 'naming', 'visualize', 'critique', 'consistency', 'launch'];
-          const firstIncompleteIdx = stageSequence.findIndex((s) => updatedStatuses[s] !== 'complete');
-          if (firstIncompleteIdx !== -1 && kit.status !== 'completed') {
-            updatedStatuses[stageSequence[firstIncompleteIdx]] = 'running';
-          }
-
-          setStageStatuses(updatedStatuses);
-
-          // If all stages are completed, stop polling
-          if (firstIncompleteIdx === -1) {
-            if (pollInterval) clearInterval(pollInterval);
-          }
+        let runId = activeRunId;
+        if (!runId) {
+          const kit = await api.getBrandKit(projectId);
+          runId = kit?.run_id || kit?.run?.id || null;
+          if (runId && isSubscribed) setActiveRunId(runId);
         }
+        if (!runId || !isSubscribed) return;
+        const done = await pollRunAndKit(runId);
+        if (done && pollInterval) clearInterval(pollInterval);
       } catch (err) {
-        console.warn('Authenticated polling status notice:', err);
+        console.warn('Authenticated workflow polling notice:', err);
       }
     }
 
@@ -278,31 +283,15 @@ export default function ProjectStudioPage() {
       });
       setActiveStageId('discover');
 
-      await api.startWorkflow(projectId);
-
-      const kit = await api.getBrandKit(projectId);
-      if (kit && kit.artifacts) {
-        const arts = kit.artifacts;
-        setBrandState({
-          ...arts,
-          visual_direction: arts.visual || arts.visual_direction,
-          selected_directions: {
-            chosen_name: kit.brand_name || arts.launch?.brand_name || '',
-            positioning_direction: arts.positioning?.directions?.[0]?.name || '',
-          },
-        });
-        setStageStatuses({
-          discover: 'complete',
-          position: 'complete',
-          persona: 'complete',
-          naming: 'complete',
-          visualize: 'complete',
-          critique: 'complete',
-          consistency: 'complete',
-          launch: 'complete',
-        });
-        setActiveStageId('launch');
+      const run = await api.startWorkflow(projectId);
+      if (!run?.run_id) {
+        throw new Error('Workflow started without a run id. Please retry.');
       }
+      setActiveRunId(run.run_id);
+
+      // Do not assume completion from the immediate response. The backend executes
+      // asynchronously; the polling effect below is the authoritative progress source.
+      await pollRunAndKit(run.run_id);
     } catch (err: any) {
       alert(`Workflow execution notice: ${err?.message || 'Workflow process encountered an issue'}`);
     } finally {
