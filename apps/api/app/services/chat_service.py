@@ -654,43 +654,92 @@ class ChatService:
                 affected_stages=[target_stage, "consistency", "launch"],
             )
 
-        # CASE 11: GENERAL FALLBACK
+        # CASE 11: GENERAL CONVERSATIONAL MENTOR
+        # Never fall back to a canned response. For any request not handled by a
+        # deterministic studio action, use the configured LLM with recent conversation
+        # plus authoritative BrandState so the mentor can carry context across turns.
         else:
-            latest_bundle = repository.get_accumulated_brand_state(project_id)
-            latest_arts = latest_bundle["artifact_map"]
-            current_name = (
-                latest_arts.get("launch", {}).get("brand_name")
-                or latest_bundle["selected_directions"].get("name", {}).get("name")
-                or project.get("name")
-                or "BrandForge Studio"
+            history = repository.list_chat_messages(project_id)
+            recent_history = history[-12:]
+            conversation_context = "\n".join(
+                f"{m.get('role', 'user').upper()}: {m.get('content', '')}"
+                for m in recent_history
             )
-            pos_data = latest_arts.get("positioning", {})
 
-            answer = (
-                f"### Strategic Brand Summary: **{current_name}**\n\n"
-                f"- **Project Idea**: {project.get('idea', '')}\n"
-                f"- **Current Final Brand Name**: **{current_name}**\n"
-                f"- **Category**: {pos_data.get('category', 'Category in development')}\n"
-                f"- **Value Proposition**: *\"{pos_data.get('value_proposition', 'Value proposition in development')}\"*\n"
-                f"- **Completed Stages**: **{len(latest_bundle['completed_stages'])}/{latest_bundle['total_stages']}**\n\n"
-                f"How would you like to proceed?\n"
-                f"- Ask for a diagnosis: *\"Diagnose my business idea\"*\n"
-                f"- Challenge the strategy: *\"What assumption is weakest?\"*\n"
-                f"- Refine positioning: *\"Make the brand more premium\"*\n"
-                f"- Test against the market: *\"Challenge this brand\"*"
-            )
-            mentor_response = MentorResponse(
-                intent="STATE_EXPLANATION",
-                response_type="teaching",
-                answer=answer,
-                key_insight="Structured brand intelligence maintains continuous alignment between founder thesis and execution.",
-                assumptions=[],
-                questions=["Which area of your business strategy would you like to diagnose next?"],
-                recommended_next_step="Review current stage progress in the Studio sidebar.",
-                tool_action=None,
-                reasoning_summary="Summarized current authoritative BrandState and presented high-value decision paths.",
-                affected_stages=[],
-            )
+            # Keep prompts bounded while retaining the state needed for continuity.
+            state_context = json.dumps({
+                "project": {
+                    "name": project.get("name"),
+                    "idea": project.get("idea"),
+                    "constraints": project.get("constraints", {}),
+                },
+                "completed_stages": state_bundle.get("completed_stages", []),
+                "selected_directions": selected_dict,
+                "artifacts": artifact_map,
+            }, default=str)[:30000]
+
+            mentor_system = f"""
+You are BrandForge Mentor, a persistent AI brand strategist and business/product advisor.
+You are inside one user's BrandForge project. Answer the user's actual question directly;
+do not force every question into a branding workflow.
+
+You have authoritative project state below. Treat it as the source of truth and never invent
+facts that are not present. If the user asks about business, product, engineering, marketing,
+positioning, naming, launch, competitors, strategy, copy, or an unrelated general question,
+answer naturally and use the project context when relevant.
+
+Conversation continuity rules:
+- Resolve references such as "it", "that name", "the second one", "make it premium",
+  "what about the earlier idea", and "continue" from the recent conversation and project state.
+- Do not ask the user to repeat information that is already in the context.
+- Remember explicit user decisions and preferences in this project.
+- Distinguish current approved state from suggestions/drafts.
+- If a requested change would affect BrandForge stages, explain the impact and suggest the
+  appropriate revision action, but do not silently mutate state.
+- Never claim an action was executed unless this request actually executed a studio action.
+- Be concise but substantive. Challenge weak assumptions constructively.
+- For factual claims that require external/current data, state what would need verification
+  rather than fabricating market facts.
+
+AUTHORITATIVE PROJECT STATE:
+{state_context}
+
+RECENT CONVERSATION:
+{conversation_context}
+"""
+
+            try:
+                answer = provider.generate_text(
+                    prompt=user_text,
+                    system_prompt=mentor_system,
+                )
+                if not answer:
+                    raise RuntimeError("AI provider returned an empty mentor response.")
+
+                mentor_response = MentorResponse(
+                    intent="GENERAL",
+                    response_type="teaching",
+                    answer=answer,
+                    key_insight=None,
+                    assumptions=[],
+                    questions=[],
+                    recommended_next_step=None,
+                    tool_action=None,
+                    reasoning_summary="Generated from the authoritative project state and recent conversation history.",
+                    affected_stages=[],
+                )
+            except Exception as e:
+                logger.exception("General mentor generation failed")
+                answer = (
+                    "I couldn't generate the mentor response right now. "
+                    "Your project state is still preserved. Please retry in a moment."
+                )
+                mentor_response = MentorResponse(
+                    intent="GENERAL",
+                    response_type="diagnosis",
+                    answer=answer,
+                    reasoning_summary=f"AI provider error: {type(e).__name__}",
+                )
 
         # Refresh accumulated state and persist assistant message
         updated_bundle = repository.get_accumulated_brand_state(project_id)
