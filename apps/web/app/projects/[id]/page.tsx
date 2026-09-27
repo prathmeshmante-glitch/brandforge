@@ -131,7 +131,7 @@ export default function ProjectStudioPage() {
       }
     }
     loadProjectData();
-  }, [projectId, activeRunId]);
+  }, [projectId]);
 
   const pollRunAndKit = async (runId: string) => {
     const workflow = await api.getWorkflowStatus(projectId, runId);
@@ -199,7 +199,7 @@ export default function ProjectStudioPage() {
       isSubscribed = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [projectId]);
+  }, [projectId, activeRunId]);
 
   const executeSaveSelection = async (selection: { direction_type: string; selected_value: any }) => {
     setSaveStatus('saving');
