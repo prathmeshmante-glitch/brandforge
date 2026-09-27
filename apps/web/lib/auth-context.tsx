@@ -198,8 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return;
-      if (settled) return;
-
       if (currentSession?.user) {
         setSession(currentSession);
         setUser(currentSession.user);
