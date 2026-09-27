@@ -136,8 +136,11 @@ export const api = {
 
   getBrandKit: (projectId: string) => fetchAPI(`/api/projects/${projectId}/brand-kit`),
 
-  exportBrandKit: (projectId: string, format: string = 'pdf') =>
-    fetchAPI(`/api/projects/${projectId}/export`, { method: 'POST', body: JSON.stringify({ format }) }),
+  exportBrandKit: (projectId: string, format: string = 'pdf', runId?: string | null) =>
+    fetchAPI(`/api/projects/${projectId}/export`, {
+      method: 'POST',
+      body: JSON.stringify({ format, ...(runId ? { run_id: runId } : {}) }),
+    }),
 
   downloadExportFile: async (downloadUrl: string, defaultFilename: string = 'brand-kit.pdf') => {
     const baseUrl = getBaseApiUrl();
