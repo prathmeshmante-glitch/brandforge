@@ -29,12 +29,19 @@ logger = logging.getLogger(__name__)
 
 
 class BaseAIProvider:
-    """Abstract base class for AI Model Providers."""
+    """Provider interface shared by workflow agents and the conversational mentor."""
+
     def generate_structured(self, prompt: str, system_prompt: str, response_model: Type[BaseModel]) -> BaseModel:
         raise NotImplementedError("Subclasses must implement generate_structured")
 
+    def generate_text(self, prompt: str, system_prompt: str = "") -> str:
+        raise NotImplementedError("Subclasses must implement generate_text")
+
 
 class MockAIProvider(BaseAIProvider):
+    def generate_text(self, prompt: str, system_prompt: str = "") -> str:
+        return "Mock provider response. Configure AI_PROVIDER=gemini (or openai) for production."
+
     """
     Deterministic Mock AI Provider for testing and offline local execution.
     Generates fully compliant, non-generic structured outputs matching the expected response_model.
@@ -182,6 +189,20 @@ class OpenAIProvider(BaseAIProvider):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY") or getattr(settings, "OPENAI_API_KEY", "")
         self.model_name = model_name or os.getenv("AI_MODEL", "gpt-4o")
 
+    def generate_text(self, prompt: str, system_prompt: str = "") -> str:
+        if not self.api_key:
+            raise ValueError("OPENAI_API_KEY environment variable is not configured.")
+        from openai import OpenAI
+        client = OpenAI(api_key=self.api_key)
+        response = client.chat.completions.create(
+            model=self.model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+        )
+        return (response.choices[0].message.content or "").strip()
+
     def generate_structured(self, prompt: str, system_prompt: str, response_model: Type[BaseModel]) -> BaseModel:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is not configured. Configure key or set AI_PROVIDER=mock.")
@@ -209,6 +230,9 @@ class AnthropicProvider(BaseAIProvider):
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         self.model_name = model_name or "claude-3-5-sonnet-20240620"
 
+    def generate_text(self, prompt: str, system_prompt: str = "") -> str:
+        raise NotImplementedError("Anthropic text generation is not configured. Use Gemini or OpenAI.")
+
     def generate_structured(self, prompt: str, system_prompt: str, response_model: Type[BaseModel]) -> BaseModel:
         if not self.api_key:
             raise ValueError("ANTHROPIC_API_KEY environment variable is not configured.")
@@ -226,6 +250,19 @@ class GeminiProvider(BaseAIProvider):
         self.model_name = model_name or os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY environment variable is not configured.")
+
+    def generate_text(self, prompt: str, system_prompt: str = "") -> str:
+        if not self.api_key:
+            raise ValueError("GEMINI_API_KEY environment variable is not configured.")
+        from google import genai
+        from google.genai import types
+        client = genai.Client(api_key=self.api_key)
+        config = types.GenerateContentConfig(system_instruction=system_prompt or None)
+        response = client.models.generate_content(model=self.model_name, contents=prompt, config=config)
+        text = (response.text or "").strip()
+        if not text:
+            raise RuntimeError("Gemini returned an empty text response.")
+        return text
 
     def generate_structured(self, prompt: str, system_prompt: str, response_model: Type[BaseModel]) -> BaseModel:
         if not self.api_key:
