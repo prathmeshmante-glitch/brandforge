@@ -59,6 +59,7 @@ class ExportService:
             "brand_name": brand_name,
             "tagline": tagline,
             "project": project,
+            "raw_idea": state_bundle.get("idea") or project.get("idea") or project.get("description") or "",
             "artifacts": artifact_map,
             "selected_directions": selected,
             "status": state_bundle.get("status", "completed"),
