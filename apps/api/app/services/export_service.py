@@ -22,14 +22,37 @@ class ExportService:
         artifact_map = state_bundle.get("artifact_map", {})
         launch_data = artifact_map.get("launch", {})
 
-        brand_name = launch_data.get("brand_name")
-        if not brand_name and state_bundle.get("selected_directions", {}).get("name"):
-            sel_val = state_bundle["selected_directions"]["name"]
-            brand_name = sel_val.get("name") if isinstance(sel_val, dict) else str(sel_val)
-        if not brand_name:
-            brand_name = project.get("name", "BrandForge Venture")
+        selected = state_bundle.get("selected_directions") or {}
+        if not isinstance(selected, dict):
+            selected = {}
 
-        tagline = launch_data.get("tagline") or launch_data.get("one_line_pitch") or "Autonomous AI Brand Intelligence System"
+        # User choice is authoritative when present, even if an older launch artifact
+        # contains a stale/generated name.
+        brand_name = None
+        for key in ("chosen_name", "selected_name", "approved_name", "preferred_name"):
+            value = selected.get(key)
+            if isinstance(value, dict):
+                value = value.get("name") or value.get("value")
+            if isinstance(value, str) and value.strip():
+                brand_name = value.strip()
+                break
+
+        if not brand_name:
+            value = selected.get("name")
+            if isinstance(value, dict):
+                value = value.get("name") or value.get("value")
+            if isinstance(value, str) and value.strip():
+                brand_name = value.strip()
+
+        if not brand_name:
+            brand_name = launch_data.get("brand_name")
+
+        # Do not turn the raw project idea into a brand name. A missing selection
+        # should remain visibly unresolved rather than silently becoming a sentence.
+        if not brand_name:
+            brand_name = "Pending user selection"
+
+        tagline = launch_data.get("tagline") or launch_data.get("one_line_pitch") or "Tagline not generated"
 
         return {
             "project_id": project_id,
@@ -37,6 +60,7 @@ class ExportService:
             "tagline": tagline,
             "project": project,
             "artifacts": artifact_map,
+            "selected_directions": selected,
             "status": state_bundle.get("status", "completed"),
         }
 
