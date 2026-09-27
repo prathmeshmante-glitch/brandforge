@@ -43,29 +43,30 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
   }
   // Resolve brand name
   const selectedName =
-    launchData?.brand_name ||
     brandState.selected_directions?.chosen_name ||
+    brandState.selected_directions?.selected_name ||
+    brandState.selected_directions?.approved_name ||
     brandState.selected_directions?.name?.name ||
     (typeof brandState.selected_directions?.name === 'string' ? brandState.selected_directions?.name : null) ||
+    launchData?.brand_name ||
     brandState.naming?.territories?.[0]?.names?.[0]?.name ||
     brandState.naming?.suggestions?.[0]?.name ||
-    brandState.name ||
-    'BrandForge';
+    'Pending user selection';
 
-  const tagline = launchData?.tagline || 'From rough idea to launch-ready brand.';
+  const tagline = launchData?.tagline || 'Tagline not generated';
   const pitch =
     launchData?.one_line_pitch ||
-    'AI Brand Intelligence Studio that turns raw ideas into structured brand kits.';
+    'One-line pitch not generated';
 
   // Personality extraction
   const personality = brandState.personality || {};
-  const archetype = personality.brand_archetype || personality.archetype || 'Creator / Visionary';
-  const emotionalGoal = personality.emotional_goal || 'Empowered engineering clarity';
+  const archetype = personality.brand_archetype || personality.archetype || 'Not generated';
+  const emotionalGoal = personality.emotional_goal || 'Not generated';
   const rawTraits = Array.isArray(personality.personality)
     ? personality.personality
     : Array.isArray(personality.traits)
     ? personality.traits
-    : ['Innovative', 'Authoritative', 'Minimalist'];
+    : [];
 
   // Visual extraction
   const visual = brandState.visual_direction || brandState.visual || {};
@@ -73,7 +74,7 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
     ? visual.color_direction
     : Array.isArray(visual.color_palette)
     ? visual.color_palette
-    : ['#0A0A0C', '#15161C', '#7C5CFF', '#B4A5FF', '#F5F5F7'];
+    : [];
 
   const normalizedColors = rawColors.map((c: any, idx: number) => {
     if (typeof c === 'string') {
@@ -92,8 +93,8 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
   });
 
   // Typography extraction
-  let headerFont = 'Editorial Serif (Georgia / Canela)';
-  let bodyFont = 'Inter / Modern System Sans';
+  let headerFont = 'Not generated';
+  let bodyFont = 'Not generated';
   if (Array.isArray(visual.typography) && visual.typography.length > 0) {
     headerFont = typeof visual.typography[0] === 'string' ? visual.typography[0] : headerFont;
     if (visual.typography.length > 1) {
@@ -106,9 +107,9 @@ export const LaunchBrandKitView: React.FC<LaunchBrandKitViewProps> = ({
 
   // Canonical Landing Page Copy
   const landingCopy = launchData?.landing_page || launchData?.landing_page_copy || {};
-  const headline = landingCopy.headline || `From rough idea to launch-ready brand with ${selectedName}`;
-  const subheadline = landingCopy.subheadline || 'Transform unstructured ideas into coherent brand systems through structured AI reasoning, human decisions, critique, and consistency.';
-  const cta = landingCopy.cta || 'Start building';
+  const headline = landingCopy.headline || 'Not generated';
+  const subheadline = landingCopy.subheadline || 'Not generated';
+  const cta = landingCopy.cta || 'Not generated';
 
   // Canonical Social Copy
   const socialData = launchData?.social || {};
