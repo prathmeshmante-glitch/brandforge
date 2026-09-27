@@ -116,6 +116,38 @@ def _persist_artifact(run_id: Optional[str], stage: str, artifact_obj: Any):
         repository.create_artifact(run_id=run_id, stage=stage, artifact_json=artifact_json)
 
 
+def _resolve_selected_name(state: Dict[str, Any]) -> tuple[Optional[str], str]:
+    """Resolve the authoritative brand name without ever treating the raw idea as a name."""
+    selected = state.get("selected_direction") or state.get("selected_directions") or {}
+    if not isinstance(selected, dict):
+        selected = {"name": selected}
+
+    # UI variants used by different project revisions.
+    for key in ("chosen_name", "selected_name", "approved_name", "preferred_name"):
+        value = selected.get(key)
+        if isinstance(value, dict):
+            value = value.get("name") or value.get("value")
+        if isinstance(value, str) and value.strip():
+            return value.strip(), "user_selected"
+
+    value = selected.get("name")
+    if isinstance(value, dict):
+        value = value.get("name") or value.get("value")
+    if isinstance(value, str) and value.strip():
+        return value.strip(), "user_selected"
+
+    # No user selection: use a generated candidate, never the raw idea.
+    naming = state.get("naming") or {}
+    territories = naming.get("territories", []) if isinstance(naming, dict) else []
+    for territory in territories:
+        names = territory.get("names", []) if isinstance(territory, dict) else []
+        for candidate in names:
+            if isinstance(candidate, dict) and isinstance(candidate.get("name"), str) and candidate["name"].strip():
+                return candidate["name"].strip(), "ai_recommended"
+
+    return None, "pending_user_selection"
+
+
 def discover_node(state: Dict[str, Any], provider: Optional[BaseAIProvider] = None) -> Dict[str, Any]:
     """Execute Agent 1: Discoverer."""
     ai_provider = provider or get_ai_provider()
@@ -334,34 +366,45 @@ def revision_planner_node(state: Dict[str, Any], provider: Optional[BaseAIProvid
 def launch_node(state: Dict[str, Any], provider: Optional[BaseAIProvider] = None) -> Dict[str, Any]:
     """Execute Agent 8: Launch Agent."""
     ai_provider = provider or get_ai_provider()
-    selected = state.get("selected_direction", {})
-    selected_name = selected.get("name") or selected.get("preferred_name")
-    if not selected_name:
-        naming = state.get("naming", {})
-        territories = naming.get("territories", []) if isinstance(naming, dict) else []
-        for t in territories:
-            names = t.get("names", []) if isinstance(t, dict) else []
-            if names and isinstance(names[0], dict) and names[0].get("name"):
-                selected_name = names[0]["name"]
-                break
-    if not selected_name:
-        selected_name = state.get("idea", "BrandForge Studio")
-    
+    selected = state.get("selected_direction") or state.get("selected_directions") or {}
+    selected_name, name_source = _resolve_selected_name(state)
+    naming = state.get("naming", {})
+    naming_candidates = []
+    if isinstance(naming, dict):
+        for territory in naming.get("territories", []):
+            if isinstance(territory, dict):
+                for candidate in territory.get("names", []):
+                    if isinstance(candidate, dict) and candidate.get("name"):
+                        naming_candidates.append(candidate.get("name"))
+
+    approved_label = selected_name or "PENDING USER SELECTION"
     prompt = (
-        f"Approved Brand Name: {selected_name}\n"
+        f"Authoritative brand-name instruction: {approved_label}\n"
+        f"Name source: {name_source}\n"
+        f"Generated naming candidates: {naming_candidates}\n"
+        f"Raw idea (context only; NEVER use as a brand name): {state.get('idea')}\n"
         f"Positioning: {state.get('positioning')}\n"
         f"Personality: {state.get('personality')}\n"
         f"Visual Direction: {state.get('visual_direction')}\n"
+        f"Critique: {state.get('critique')}\n"
+        f"Consistency Audit: {state.get('consistency')}\n"
         f"User Directive: {selected}"
     )
-    
+
     output: LaunchAgentOutput = ai_provider.generate_structured(
         prompt=prompt,
         system_prompt=LAUNCH_PROMPT,
         response_model=LaunchAgentOutput
     )
-    
-    state["launch"] = _dump_model(output)
+
+    launch_payload = _dump_model(output)
+    # A user-selected name is authoritative. Gemini must not silently replace it.
+    if selected_name:
+        launch_payload["brand_name"] = selected_name
+    elif not launch_payload.get("brand_name"):
+        launch_payload["brand_name"] = "Pending user selection"
+    launch_payload["brand_name_source"] = name_source
+    state["launch"] = launch_payload
     state["status"] = "completed"
     _persist_artifact(state.get("run_id"), "launch", output)
     return state

@@ -74,552 +74,601 @@ class BrandKitPDFGenerator:
 
     @classmethod
     def generate(cls, brand_kit_data: Dict[str, Any]) -> bytes:
+        """Render the accumulated BrandForge state as a detailed, evidence-traceable brand report."""
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
             buffer,
             pagesize=letter,
-            leftMargin=40,
-            rightMargin=40,
-            topMargin=45,
-            bottomMargin=45,
+            leftMargin=42,
+            rightMargin=42,
+            topMargin=48,
+            bottomMargin=48,
         )
-
         styles = getSampleStyleSheet()
 
-        # Custom Neo-Editorial typography & palettes
-        PRIMARY = colors.HexColor("#0F172A")    # Deep Slate
-        ACCENT = colors.HexColor("#4F46E5")     # Indigo
-        SAGE = colors.HexColor("#059669")       # Emerald/Sage
-        MUTED = colors.HexColor("#475569")      # Muted slate
-        LIGHT_BG = colors.HexColor("#F8FAFC")   # Subtle slate tint
-        BORDER = colors.HexColor("#CBD5E1")     # Border color
+        PRIMARY = colors.HexColor("#0F172A")
+        ACCENT = colors.HexColor("#4F46E5")
+        SAGE = colors.HexColor("#059669")
+        MUTED = colors.HexColor("#475569")
+        LIGHT_BG = colors.HexColor("#F8FAFC")
+        BORDER = colors.HexColor("#CBD5E1")
         CARD_BG = colors.HexColor("#F1F5F9")
+        AMBER = colors.HexColor("#B45309")
 
-        # Headings & Text Styles
-        cover_title_style = ParagraphStyle(
-            "CoverTitle",
-            parent=styles["Normal"],
-            fontName="Helvetica-Bold",
-            fontSize=34,
-            leading=40,
-            textColor=PRIMARY,
-            spaceAfter=10,
+        cover_title = ParagraphStyle(
+            "BF_CoverTitle", parent=styles["Title"], fontName="Helvetica-Bold",
+            fontSize=34, leading=38, textColor=PRIMARY, spaceAfter=12
         )
-        cover_tagline_style = ParagraphStyle(
-            "CoverTagline",
-            parent=styles["Normal"],
-            fontName="Helvetica",
-            fontSize=15,
-            leading=20,
-            textColor=ACCENT,
-            spaceAfter=25,
+        eyebrow = ParagraphStyle(
+            "BF_Eyebrow", parent=styles["Normal"], fontName="Helvetica-Bold",
+            fontSize=8, leading=10, textColor=ACCENT, spaceAfter=7
         )
-        eyebrow_style = ParagraphStyle(
-            "Eyebrow",
-            parent=styles["Normal"],
-            fontName="Helvetica-Bold",
-            fontSize=8,
-            leading=10,
-            textColor=ACCENT,
-            textTransform="uppercase",
-            spaceAfter=6,
+        h1 = ParagraphStyle(
+            "BF_H1", parent=styles["Heading1"], fontName="Helvetica-Bold",
+            fontSize=21, leading=25, textColor=PRIMARY, spaceAfter=8
         )
-        h1_style = ParagraphStyle(
-            "Heading1",
-            parent=styles["Normal"],
-            fontName="Helvetica-Bold",
-            fontSize=20,
-            leading=24,
-            textColor=PRIMARY,
-            spaceBefore=14,
-            spaceAfter=8,
-            keepWithNext=True,
+        h2 = ParagraphStyle(
+            "BF_H2", parent=styles["Heading2"], fontName="Helvetica-Bold",
+            fontSize=12, leading=15, textColor=PRIMARY, spaceBefore=8, spaceAfter=5
         )
-        h2_style = ParagraphStyle(
-            "Heading2",
-            parent=styles["Normal"],
-            fontName="Helvetica-Bold",
-            fontSize=13,
-            leading=16,
-            textColor=PRIMARY,
-            spaceBefore=10,
-            spaceAfter=4,
-            keepWithNext=True,
+        body = ParagraphStyle(
+            "BF_Body", parent=styles["BodyText"], fontName="Helvetica",
+            fontSize=9.5, leading=14, textColor=PRIMARY, spaceAfter=6
         )
-        body_style = ParagraphStyle(
-            "Body",
-            parent=styles["Normal"],
-            fontName="Helvetica",
-            fontSize=9.5,
-            leading=14,
-            textColor=PRIMARY,
-            spaceAfter=6,
+        muted = ParagraphStyle(
+            "BF_Muted", parent=body, fontSize=8.5, leading=12, textColor=MUTED
         )
-        body_muted_style = ParagraphStyle(
-            "BodyMuted",
-            parent=styles["Normal"],
-            fontName="Helvetica",
-            fontSize=8.5,
-            leading=12,
-            textColor=MUTED,
+        quote = ParagraphStyle(
+            "BF_Quote", parent=body, fontName="Helvetica-Oblique",
+            fontSize=11, leading=16, textColor=PRIMARY, leftIndent=12, rightIndent=12
         )
-        quote_style = ParagraphStyle(
-            "Quote",
-            parent=styles["Normal"],
-            fontName="Helvetica-Oblique",
-            fontSize=11,
-            leading=15,
-            textColor=PRIMARY,
-            leftIndent=14,
-            spaceAfter=8,
+        small = ParagraphStyle(
+            "BF_Small", parent=body, fontSize=7.5, leading=10, textColor=MUTED
         )
-        disclaimer_style = ParagraphStyle(
-            "Disclaimer",
-            parent=styles["Normal"],
-            fontName="Helvetica-Oblique",
-            fontSize=8,
-            leading=11,
-            textColor=colors.HexColor("#B45309"),  # Amber
-            spaceBefore=6,
-            spaceAfter=8,
+        callout = ParagraphStyle(
+            "BF_Callout", parent=body, fontName="Helvetica-Bold",
+            fontSize=10, leading=14, textColor=PRIMARY
         )
+
+        artifacts = brand_kit_data.get("artifacts") or {}
+        project = brand_kit_data.get("project") or {}
+        selected = brand_kit_data.get("selected_directions") or {}
+        if not isinstance(selected, dict):
+            selected = {}
+
+        def first_artifact(*keys):
+            for key in keys:
+                value = artifacts.get(key)
+                if isinstance(value, dict) and value:
+                    return value
+            return {}
+
+        discovery = first_artifact("discovery", "discover")
+        positioning = first_artifact("positioning", "position")
+        personality = first_artifact("personality", "strategist")
+        naming = first_artifact("naming", "name")
+        visual = first_artifact("visual", "visual_direction", "creative")
+        critique = first_artifact("critique", "critic")
+        consistency = first_artifact("consistency", "guardian")
+        launch = first_artifact("launch")
+
+        brand_name = cls._sanitize(brand_kit_data.get("brand_name") or "Pending user selection")
+        tagline = cls._sanitize(brand_kit_data.get("tagline") or launch.get("tagline") or "Tagline not generated")
+        raw_idea = brand_kit_data.get("raw_idea") or project.get("idea") or project.get("description") or project.get("brief") or ""
+        constraints = project.get("constraints") or {}
+
+        def val(obj, *keys, default=""):
+            if not isinstance(obj, dict):
+                return default
+            for key in keys:
+                v = obj.get(key)
+                if v not in (None, ""):
+                    return v
+            return default
+
+        def as_list(value):
+            if value is None:
+                return []
+            if isinstance(value, list):
+                return value
+            return [value]
+
+        def bullets(items, style=body, empty="Not generated by the workflow."):
+            items = as_list(items)
+            if not items:
+                return [Paragraph(cls._sanitize(empty), muted)]
+            out = []
+            for item in items:
+                if isinstance(item, dict):
+                    text_value = item.get("name") or item.get("description") or item.get("text") or str(item)
+                else:
+                    text_value = str(item)
+                out.append(Paragraph(f"• {cls._sanitize(text_value)}", style))
+            return out
+
+        def section(number, title, subtitle=None):
+            story.append(Paragraph(f"{number} / {title.upper()}", eyebrow))
+            story.append(Paragraph(title, h1))
+            if subtitle:
+                story.append(Paragraph(cls._sanitize(subtitle), muted))
+            story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
+
+        def key_value_table(rows):
+            data = []
+            for label, value in rows:
+                data.append([
+                    Paragraph(f"<b>{cls._sanitize(label)}</b>", body),
+                    Paragraph(cls._sanitize(value if value not in (None, "") else "Not generated by the workflow."), body),
+                ])
+            table = Table(data, colWidths=[145, 375], repeatRows=0)
+            table.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.7, BORDER),
+                ("INNERGRID", (0, 0), (-1, -1), 0.35, BORDER),
+                ("BACKGROUND", (0, 0), (0, -1), CARD_BG),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ]))
+            story.append(table)
+
+        def bullet_section(title, items):
+            story.append(Paragraph(title, h2))
+            for item in bullets(items):
+                story.append(item)
 
         story = []
 
-        # Data extraction
-        brand_name = brand_kit_data.get("brand_name") or "BrandForge Venture"
-        tagline = brand_kit_data.get("tagline") or "Autonomous Multi-Agent Brand Intelligence"
-        project_data = brand_kit_data.get("project") or {}
-        idea = project_data.get("idea") or ""
-        constraints = project_data.get("constraints") or {}
-        artifacts = brand_kit_data.get("artifacts") or {}
+        # ---------------------------------------------------------------------
+        # COVER
+        # ---------------------------------------------------------------------
+        story.append(Spacer(1, 1.0 * inch))
+        story.append(Paragraph("BRANDFORGE", eyebrow))
+        story.append(Paragraph("AI Brand Intelligence Report", cover_title))
+        story.append(Paragraph(brand_name, ParagraphStyle(
+            "BF_CoverBrand", parent=cover_title, fontSize=25, leading=30, textColor=ACCENT
+        )))
+        story.append(Paragraph(f"“{tagline}”", quote))
+        story.append(Spacer(1, 24))
+        story.append(Paragraph(
+            "A detailed synthesis of discovery, positioning, personality, naming, visual direction, "
+            "adversarial critique, consistency checks, and launch assets generated by the BrandForge agent pipeline.",
+            body
+        ))
+        story.append(Spacer(1, 18))
+        story.append(key_value_table([
+            ("Project", project.get("name") or project.get("title") or "Brand project"),
+            ("Pipeline", "8-agent brand intelligence workflow"),
+            ("Report status", brand_kit_data.get("status") or "completed"),
+            ("Generated", datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC")),
+        ]))
+        story.append(Spacer(1, 20))
+        story.append(Paragraph(
+            "Important: AI-generated strategy is a working decision system, not market validation, legal advice, "
+            "or trademark clearance. Claims marked as assumptions or open questions should be validated by the founder.",
+            small
+        ))
+        story.append(PageBreak())
 
-        discovery = artifacts.get("discovery") or {}
-        positioning = artifacts.get("positioning") or {}
-        personality = artifacts.get("personality") or {}
-        naming = artifacts.get("naming") or {}
-        visual = artifacts.get("visual") or artifacts.get("visual_direction") or {}
-        critique = artifacts.get("critique") or {}
-        consistency = artifacts.get("consistency") or {}
-        launch = artifacts.get("launch") or {}
-
-        # =========================================================================
-        # COVER PAGE
-        # =========================================================================
-        story.append(Spacer(1, 40))
-        story.append(Paragraph("BRANDFORGE — AI BRAND INTELLIGENCE STUDIO", eyebrow_style))
+        # ---------------------------------------------------------------------
+        # 01 EXECUTIVE SUMMARY
+        # ---------------------------------------------------------------------
+        section("01", "Executive Brand Summary", "The current strategic spine of the brand.")
+        story.append(Paragraph("Authoritative Brand Name", h2))
+        story.append(Paragraph(brand_name, ParagraphStyle(
+            "BF_Name", parent=cover_title, fontSize=22, leading=26, textColor=ACCENT
+        )))
+        key_value_table([
+            ("Tagline", tagline),
+            ("Core problem", val(discovery, "problem", default="Not generated by the workflow.")),
+            ("Category", val(positioning, "category", default="Not generated by the workflow.")),
+            ("Value proposition", val(positioning, "value_proposition", default="Not generated by the workflow.")),
+            ("Positioning statement", val(positioning, "positioning_statement", default="Not generated by the workflow.")),
+            ("Brand archetype", val(personality, "brand_archetype", default="Not generated by the workflow.")),
+            ("Emotional goal", val(personality, "emotional_goal", default="Not generated by the workflow.")),
+        ])
         story.append(Spacer(1, 10))
-        story.append(Paragraph(cls._sanitize(brand_name), cover_title_style))
-        story.append(Paragraph(cls._sanitize(tagline), cover_tagline_style))
-        story.append(HRFlowable(width="100%", thickness=2, color=ACCENT, spaceBefore=0, spaceAfter=20))
-
-        # Metadata Table
-        now_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
-        meta_table_data = [
-            [
-                Paragraph("<b>Document Type:</b> Master Brand System & Launch Kit", body_style),
-                Paragraph(f"<b>Issue Date:</b> {now_date}", body_style)
-            ],
-            [
-                Paragraph(f"<b>Classification:</b> Confidential / Studio Asset", body_style),
-                Paragraph("<b>Engine:</b> BrandForge Multi-Agent AI System", body_style)
-            ],
-            [
-                Paragraph(f"<b>Raw Idea:</b> {cls._sanitize(idea[:140]) + ('...' if len(idea) > 140 else '')}", body_style),
-                Paragraph(f"<b>Audit Score:</b> {cls._sanitize(consistency.get('overall_score', '94'))}/100 Coherence", body_style)
-            ]
-        ]
-        meta_table = Table(meta_table_data, colWidths=[260, 260])
-        meta_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), CARD_BG),
-            ("BOX", (0, 0), (-1, -1), 1, BORDER),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
-            ("TOPPADDING", (0, 0), (-1, -1), 8),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-            ("LEFTPADDING", (0, 0), (-1, -1), 10),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ]))
-        story.append(meta_table)
-
-        story.append(Spacer(1, 40))
-        overview_text = (
-            "This document embodies the complete strategic, linguistic, and visual identity for <b>"
-            + cls._sanitize(brand_name)
-            + "</b>. Synthesized through an eight-stage agentic workflow: from market discovery and strategic "
-            "positioning to personality design, naming validation, visual systems, adversarial critique, and "
-            "cross-stage consistency assurance."
-        )
-        story.append(Paragraph(overview_text, body_style))
+        story.append(Paragraph("Strategic Through-Line", h2))
+        story.append(Paragraph(
+            "The report should be read as a chain: the discovered problem and audience create the positioning; "
+            "positioning shapes personality and naming; personality and positioning shape the visual system; "
+            "critique and consistency testing pressure-test the system; the launch agent turns the approved system into execution.",
+            body
+        ))
         story.append(PageBreak())
 
-        # =========================================================================
-        # 1. BRAND STRATEGY & DISCOVERY
-        # =========================================================================
-        story.append(Paragraph("01 / STRATEGIC DISCOVERY", eyebrow_style))
-        story.append(Paragraph("Market Problem & Audience Architecture", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
-
-        prob_text = discovery.get("problem") or idea or "Unspecified founder problem space."
-        story.append(Paragraph("<b>The Core Problem:</b>", h2_style))
-        story.append(Paragraph(cls._sanitize(prob_text), body_style))
-
-        # Target Users
-        target_users = discovery.get("target_users", [])
-        if target_users and isinstance(target_users, list):
-            story.append(Spacer(1, 6))
-            story.append(Paragraph("<b>Target Audience Segments:</b>", h2_style))
-            user_rows = [["Segment", "Core Needs", "Pain Points"]]
-            for u in target_users[:4]:
-                if isinstance(u, dict):
-                    seg_name = cls._sanitize(u.get("segment", "Audience"))
-                    needs = cls._sanitize(", ".join(u.get("needs", [])) if isinstance(u.get("needs"), list) else u.get("needs", ""))
-                    pains = cls._sanitize(", ".join(u.get("pain_points", [])) if isinstance(u.get("pain_points"), list) else u.get("pain_points", ""))
-                    user_rows.append([Paragraph(f"<b>{seg_name}</b>", body_style), Paragraph(needs, body_muted_style), Paragraph(pains, body_muted_style)])
-            if len(user_rows) > 1:
-                u_table = Table(user_rows, colWidths=[130, 200, 190])
-                u_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
-                    ("TOPPADDING", (0, 0), (-1, 0), 6),
-                    ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-                    ("TOPPADDING", (0, 1), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
-                ]))
-                story.append(u_table)
-
-        # Context & Constraints
-        ctx = discovery.get("context") or "Market opportunity validated by builder demand."
-        story.append(Spacer(1, 8))
-        story.append(Paragraph("<b>Market Context & Operating Constraints:</b>", h2_style))
-        story.append(Paragraph(cls._sanitize(ctx), body_style))
+        # ---------------------------------------------------------------------
+        # 02 DISCOVERY
+        # ---------------------------------------------------------------------
+        section("02", "Discovery & Problem Definition", "What the workflow understood from the founder's original brief.")
+        story.append(Paragraph("Original Brief", h2))
+        story.append(Paragraph(
+            cls._sanitize(raw_idea or "No raw idea was stored with the export payload."),
+            quote
+        ))
+        story.append(Paragraph("Core Problem", h2))
+        story.append(Paragraph(
+            cls._sanitize(val(discovery, "problem", default="Not generated by the workflow.")),
+            body
+        ))
+        story.append(Paragraph("Market / Operating Context", h2))
+        story.append(Paragraph(
+            cls._sanitize(val(discovery, "context", default="Not generated by the workflow.")),
+            body
+        ))
+        bullet_section("Goals", discovery.get("goals", []))
+        bullet_section("Explicit Constraints", discovery.get("constraints", []))
+        bullet_section("Assumptions", discovery.get("assumptions", []))
+        bullet_section("Open Questions Requiring Validation", discovery.get("open_questions", []))
         if constraints:
-            c_str = ", ".join(f"{k}: {v}" for k, v in constraints.items())
-            story.append(Paragraph(f"<b>User Specified Constraints:</b> {cls._sanitize(c_str)}", body_muted_style))
-
-        story.append(Spacer(1, 14))
-
-        # =========================================================================
-        # 2. BRAND POSITIONING
-        # =========================================================================
-        story.append(Paragraph("02 / STRATEGIC POSITIONING", eyebrow_style))
-        story.append(Paragraph("Value Proposition & Competitive Edge", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
-
-        cat = positioning.get("category") or "Next-Generation Intelligent Platform"
-        val_prop = positioning.get("value_proposition") or "Delivering high-velocity leverage to founders."
-        pos_stmt = positioning.get("positioning_statement") or f"For creators seeking speed, {brand_name} is the definitive brand system."
-
-        pos_table_data = [
-            [Paragraph("<b>Category:</b>", body_style), Paragraph(cls._sanitize(cat), body_style)],
-            [Paragraph("<b>Value Proposition:</b>", body_style), Paragraph(cls._sanitize(val_prop), body_style)],
-            [Paragraph("<b>Positioning Statement:</b>", body_style), Paragraph(f"<i>“{cls._sanitize(pos_stmt)}”</i>", quote_style)],
-        ]
-        pos_table = Table(pos_table_data, colWidths=[140, 380])
-        pos_table.setStyle(TableStyle([
-            ("BOX", (0, 0), (-1, -1), 1, BORDER),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
-            ("BACKGROUND", (0, 0), (0, -1), CARD_BG),
-            ("TOPPADDING", (0, 0), (-1, -1), 7),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-        ]))
-        story.append(pos_table)
-
-        # Differentiators & Proof Points
-        diffs = positioning.get("differentiators", [])
-        if diffs and isinstance(diffs, list):
-            story.append(Spacer(1, 8))
-            story.append(Paragraph("<b>Key Market Differentiators:</b>", h2_style))
-            for d in diffs[:4]:
-                story.append(Paragraph(f"• {cls._sanitize(d)}", body_style))
-
-        proofs = positioning.get("proof_points", [])
-        if proofs and isinstance(proofs, list):
-            story.append(Spacer(1, 4))
-            story.append(Paragraph("<b>Strategic Proof Points:</b>", h2_style))
-            for p in proofs[:3]:
-                story.append(Paragraph(f"✓ {cls._sanitize(p)}", body_muted_style))
-
+            bullet_section("Founder-Supplied Project Constraints", [
+                f"{k}: {v}" for k, v in constraints.items()
+            ])
         story.append(PageBreak())
 
-        # =========================================================================
-        # 3. PERSONALITY & TONE
-        # =========================================================================
-        story.append(Paragraph("03 / BRAND PERSONALITY", eyebrow_style))
-        story.append(Paragraph("Voice, Principles & Emotional Objective", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
+        # ---------------------------------------------------------------------
+        # 03 AUDIENCE
+        # ---------------------------------------------------------------------
+        section("03", "Audience & Customer Fit", "Audience segments, needs, and pain points identified by discovery.")
+        segments = discovery.get("target_users", [])
+        if segments:
+            rows = [[
+                Paragraph("<b>Segment</b>", body),
+                Paragraph("<b>Needs</b>", body),
+                Paragraph("<b>Pain Points</b>", body),
+            ]]
+            for seg in segments:
+                if isinstance(seg, dict):
+                    rows.append([
+                        Paragraph(f"<b>{cls._sanitize(seg.get('segment', 'Audience segment'))}</b>", body),
+                        Paragraph("<br/>".join(f"• {cls._sanitize(x)}" for x in as_list(seg.get("needs"))), muted),
+                        Paragraph("<br/>".join(f"• {cls._sanitize(x)}" for x in as_list(seg.get("pain_points"))), muted),
+                    ])
+            table = Table(rows, colWidths=[130, 195, 195], repeatRows=1)
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.4, BORDER),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ]))
+            story.append(table)
+        else:
+            story.append(Paragraph("No structured audience segments were generated.", muted))
+        story.append(Spacer(1, 14))
+        story.append(Paragraph("Audience Implication", h2))
+        story.append(Paragraph(
+            "These segments are the evidence base available to the later agents. Where discovery lists an open question "
+            "or assumption, the brand team should treat the related audience claim as provisional rather than established fact.",
+            body
+        ))
+        story.append(PageBreak())
 
-        archetype = personality.get("brand_archetype") or "The Creator"
-        emotional_goal = personality.get("emotional_goal") or "Empowered, confident, and unstoppable"
-        story.append(Paragraph(f"<b>Brand Archetype:</b> {cls._sanitize(archetype)} | <b>Emotional Objective:</b> {cls._sanitize(emotional_goal)}", body_style))
-        story.append(Spacer(1, 6))
+        # ---------------------------------------------------------------------
+        # 04 POSITIONING
+        # ---------------------------------------------------------------------
+        section("04", "Strategic Positioning", "How the concept is framed in the market.")
+        key_value_table([
+            ("Category", val(positioning, "category", default="Not generated by the workflow.")),
+            ("Core problem", val(positioning, "core_problem", default="Not generated by the workflow.")),
+            ("Value proposition", val(positioning, "value_proposition", default="Not generated by the workflow.")),
+            ("Competitive angle", val(positioning, "competitive_angle", default="Not generated by the workflow.")),
+            ("Positioning statement", val(positioning, "positioning_statement", default="Not generated by the workflow.")),
+        ])
+        bullet_section("Differentiators", positioning.get("differentiators", []))
+        bullet_section("Proof Points / Claims to Validate", positioning.get("proof_points", []))
+        story.append(PageBreak())
 
-        # Personality Traits
+        # ---------------------------------------------------------------------
+        # 05 PERSONALITY + VOICE
+        # ---------------------------------------------------------------------
+        section("05", "Brand Personality & Voice", "The behavioral system that should govern communication.")
+        key_value_table([
+            ("Archetype", val(personality, "brand_archetype", default="Not generated by the workflow.")),
+            ("Emotional goal", val(personality, "emotional_goal", default="Not generated by the workflow.")),
+        ])
         traits = personality.get("personality", [])
-        if traits and isinstance(traits, list):
-            trait_rows = [["Trait", "Strategic Rationale"]]
-            for t in traits[:4]:
-                if isinstance(t, dict):
-                    trait_rows.append([Paragraph(f"<b>{cls._sanitize(t.get('trait', ''))}</b>", body_style), Paragraph(cls._sanitize(t.get("reason", "")), body_muted_style)])
-            if len(trait_rows) > 1:
-                t_table = Table(trait_rows, colWidths=[150, 370])
-                t_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]))
-                story.append(t_table)
-
-        # Tone Guide (Do vs Avoid)
-        tone = personality.get("tone") or {}
-        dos = tone.get("do", []) if isinstance(tone, dict) else []
-        avoids = tone.get("avoid", []) if isinstance(tone, dict) else []
-        if dos or avoids:
-            story.append(Spacer(1, 10))
-            story.append(Paragraph("<b>Tone of Voice Guidelines:</b>", h2_style))
-            do_text = "<br/>".join(f"✓ {cls._sanitize(d)}" for d in dos[:4]) or "Use direct, empowering language."
-            avoid_text = "<br/>".join(f"✗ {cls._sanitize(a)}" for a in avoids[:4]) or "Avoid corporate fluff."
-            tone_table = Table([
-                [Paragraph("<b>DO USE:</b>", body_style), Paragraph("<b>AVOID:</b>", body_style)],
-                [Paragraph(do_text, body_style), Paragraph(avoid_text, body_style)]
-            ], colWidths=[260, 260])
-            tone_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor("#ECFDF5")),
-                ("BACKGROUND", (1, 0), (1, 0), colors.HexColor("#FEF2F2")),
-                ("BACKGROUND", (0, 1), (0, 1), colors.white),
-                ("BACKGROUND", (1, 1), (1, 1), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
+        if traits:
+            story.append(Paragraph("Personality Traits & Strategic Reasons", h2))
+            rows = [[Paragraph("<b>Trait</b>", body), Paragraph("<b>Reason</b>", body)]]
+            for item in traits:
+                if isinstance(item, dict):
+                    rows.append([
+                        Paragraph(f"<b>{cls._sanitize(item.get('trait', 'Trait'))}</b>", body),
+                        Paragraph(cls._sanitize(item.get("reason", "")), muted),
+                    ])
+            table = Table(rows, colWidths=[145, 375], repeatRows=1)
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.4, BORDER),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]))
-            story.append(tone_table)
+            story.append(table)
+        tone = personality.get("tone") or {}
+        story.append(Spacer(1, 10))
+        story.append(Paragraph("Tone of Voice — DO", h2))
+        story.extend(bullets(tone.get("do", [])))
+        story.append(Paragraph("Tone of Voice — AVOID", h2))
+        story.extend(bullets(tone.get("avoid", [])))
+        bullet_section("Brand Principles", personality.get("principles", []))
+        story.append(PageBreak())
+
+        # ---------------------------------------------------------------------
+        # 06 NAMING
+        # ---------------------------------------------------------------------
+        section("06", "Naming System", "Territories, candidates, rationale, strengths, and risks.")
+        story.append(Paragraph("Authoritative Selection", h2))
+        story.append(Paragraph(brand_name, ParagraphStyle(
+            "BF_Selected", parent=cover_title, fontSize=19, leading=23, textColor=ACCENT
+        )))
+        story.append(Paragraph(
+            "User-selected names are authoritative. If no selection was available, the report uses an AI-generated candidate "
+            "only as a provisional recommendation. No name in this report represents legal or trademark clearance.",
+            small
+        ))
+        territories = naming.get("territories", [])
+        for idx, territory in enumerate(territories, start=1):
+            if not isinstance(territory, dict):
+                continue
+            story.append(Paragraph(
+                f"{idx}. {cls._sanitize(territory.get('type', 'Naming Territory'))}",
+                h2
+            ))
+            story.append(Paragraph(cls._sanitize(territory.get("description", "")), body))
+            candidates = territory.get("names", [])
+            if candidates:
+                rows = [[
+                    Paragraph("<b>Candidate</b>", body),
+                    Paragraph("<b>Rationale</b>", body),
+                    Paragraph("<b>Strengths</b>", body),
+                    Paragraph("<b>Risks</b>", body),
+                ]]
+                for candidate in candidates:
+                    if isinstance(candidate, dict):
+                        rows.append([
+                            Paragraph(f"<b>{cls._sanitize(candidate.get('name', ''))}</b>", body),
+                            Paragraph(cls._sanitize(candidate.get("rationale", "")), muted),
+                            Paragraph("<br/>".join(f"• {cls._sanitize(x)}" for x in as_list(candidate.get("strengths"))), muted),
+                            Paragraph("<br/>".join(f"• {cls._sanitize(x)}" for x in as_list(candidate.get("risks"))), muted),
+                        ])
+                table = Table(rows, colWidths=[90, 170, 130, 130], repeatRows=1)
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), CARD_BG),
+                    ("GRID", (0, 0), (-1, -1), 0.35, BORDER),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]))
+                story.append(table)
+                story.append(Spacer(1, 7))
+        if not territories:
+            story.append(Paragraph("No naming territories were generated.", muted))
+        story.append(PageBreak())
+
+        # ---------------------------------------------------------------------
+        # 07 VISUAL IDENTITY
+        # ---------------------------------------------------------------------
+        section("07", "Visual Identity System", "A practical design direction derived from the strategic artifacts.")
+        vd = visual.get("visual_direction") if isinstance(visual.get("visual_direction"), dict) else visual
+        bullet_section("Mood", vd.get("mood", []))
+        colors_data = vd.get("color_direction") or vd.get("color_palette") or []
+        story.append(Paragraph("Color Direction", h2))
+        if colors_data:
+            for color_item in colors_data:
+                if isinstance(color_item, dict):
+                    role = color_item.get("role") or color_item.get("name") or "Color"
+                    hex_value = color_item.get("hex") or color_item.get("value") or ""
+                    usage = color_item.get("usage") or color_item.get("description") or ""
+                    story.append(Paragraph(
+                        f"<b>{cls._sanitize(role)}</b> — {cls._sanitize(hex_value)} — {cls._sanitize(usage)}",
+                        body
+                    ))
+                else:
+                    story.append(Paragraph(f"• {cls._sanitize(color_item)}", body))
+        else:
+            story.append(Paragraph("No color direction was generated.", muted))
+        bullet_section("Typography", vd.get("typography", []))
+        bullet_section("Composition / Layout", vd.get("composition", []))
+        bullet_section("Shape Language", vd.get("shape_language", []))
+        bullet_section("Imagery Direction", vd.get("imagery", []))
+        bullet_section("Symbol Concepts", vd.get("symbol_concepts", []))
+        bullet_section("Avoid / Clichés", vd.get("avoid", []))
+        logo = visual.get("logo_direction") if isinstance(visual, dict) else {}
+        if isinstance(logo, dict):
+            story.append(Paragraph("Logo Direction", h2))
+            story.append(Paragraph(
+                f"<b>Concept:</b> {cls._sanitize(logo.get('concept', 'Not generated.'))}<br/>"
+                f"<b>Rationale:</b> {cls._sanitize(logo.get('rationale', 'Not generated.'))}",
+                body
+            ))
+        story.append(PageBreak())
+
+        # ---------------------------------------------------------------------
+        # 08 BRAND BATTLE
+        # ---------------------------------------------------------------------
+        section("08", "Brand Battle Critique", "Adversarial stress testing performed before final synthesis.")
+        issues = critique.get("issues", [])
+        if issues:
+            rows = [[
+                Paragraph("<b>Severity</b>", body),
+                Paragraph("<b>Area / Target</b>", body),
+                Paragraph("<b>Problem & Evidence</b>", body),
+                Paragraph("<b>Suggested Action</b>", body),
+            ]]
+            for issue in issues:
+                if isinstance(issue, dict):
+                    rows.append([
+                        Paragraph(cls._sanitize(issue.get("severity", "unspecified")).upper(), body),
+                        Paragraph(cls._sanitize(issue.get("area") or issue.get("target") or "Unspecified"), body),
+                        Paragraph(
+                            f"<b>Problem:</b> {cls._sanitize(issue.get('problem') or issue.get('issue') or '')}<br/>"
+                            f"<b>Evidence:</b> {cls._sanitize(issue.get('evidence') or '')}",
+                            muted
+                        ),
+                        Paragraph(cls._sanitize(issue.get("suggestion") or issue.get("recommendation") or ""), muted),
+                    ])
+            table = Table(rows, colWidths=[65, 95, 205, 155], repeatRows=1)
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.35, BORDER),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(table)
+        else:
+            story.append(Paragraph("No critique issues were recorded by Agent 6.", muted))
+        bullet_section("Genericity Checks", critique.get("genericity_checks", []))
+        bullet_section("Audience Mismatch Warnings", critique.get("audience_mismatch", []))
+        bullet_section("Contradictions", critique.get("contradictions", []))
+        bullet_section("Revised Options", critique.get("revised_options", []))
+        story.append(PageBreak())
+
+        # ---------------------------------------------------------------------
+        # 09 CONSISTENCY
+        # ---------------------------------------------------------------------
+        section("09", "Consistency Guardian", "Cross-stage coherence audit.")
+        score = consistency.get("overall_consistency", consistency.get("overall_score"))
+        score_text = f"{score}/100" if score is not None else "Not scored"
+        story.append(Paragraph(
+            f"<b>Overall Brand Coherence:</b> <font color='{SAGE.hexval()}' size='16'><b>{cls._sanitize(score_text)}</b></font>",
+            body
+        ))
+        checks = consistency.get("checks", [])
+        if checks:
+            rows = [[
+                Paragraph("<b>Area</b>", body),
+                Paragraph("<b>Status</b>", body),
+                Paragraph("<b>Reason</b>", body),
+            ]]
+            for check in checks:
+                if isinstance(check, dict):
+                    status = check.get("status")
+                    if status is None and "pass" in check:
+                        status = "pass" if check.get("pass") else "fail"
+                    rows.append([
+                        Paragraph(cls._sanitize(check.get("area") or check.get("element") or check.get("name") or "Check"), body),
+                        Paragraph(cls._sanitize(status or "unspecified").upper(), body),
+                        Paragraph(cls._sanitize(check.get("reason") or check.get("findings") or check.get("detail") or ""), muted),
+                    ])
+            table = Table(rows, colWidths=[150, 75, 295], repeatRows=1)
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.35, BORDER),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(table)
+        bullet_section("Required Revisions", consistency.get("required_revisions", []))
+        story.append(PageBreak())
+
+        # ---------------------------------------------------------------------
+        # 10 LAUNCH MESSAGING
+        # ---------------------------------------------------------------------
+        section("10", "Launch Messaging", "Final synthesis and ready-to-use communication assets.")
+        landing = launch.get("landing_page") or launch.get("landing_page_copy") or {}
+        social = launch.get("social") or launch.get("social_copy") or {}
+        key_value_table([
+            ("Brand name", launch.get("brand_name") or brand_name),
+            ("Tagline", launch.get("tagline") or tagline),
+            ("One-line pitch", launch.get("one_line_pitch") or "Not generated by the workflow."),
+            ("Landing headline", landing.get("headline") if isinstance(landing, dict) else ""),
+            ("Landing subheadline", landing.get("subheadline") if isinstance(landing, dict) else ""),
+            ("Primary CTA", landing.get("cta") if isinstance(landing, dict) else ""),
+        ])
+        story.append(Paragraph("Instagram Launch Copy", h2))
+        story.append(Paragraph(
+            cls._sanitize(social.get("instagram") or "Not generated by the workflow."),
+            body
+        ))
+        story.append(Paragraph("LinkedIn Launch Copy", h2))
+        story.append(Paragraph(
+            cls._sanitize(social.get("linkedin") or "Not generated by the workflow."),
+            body
+        ))
+        story.append(Paragraph("Brand Voice Examples", h2))
+        story.extend(bullets(launch.get("brand_voice_samples", [])))
+        story.append(PageBreak())
+
+        # ---------------------------------------------------------------------
+        # 11 LAUNCH ANNOUNCEMENT + CHANNEL PLAYBOOK
+        # ---------------------------------------------------------------------
+        section("11", "Launch Execution Playbook", "How the generated messaging can be applied across the first launch touchpoints.")
+        story.append(Paragraph("Launch Announcement", h2))
+        story.append(Paragraph(
+            cls._sanitize(launch.get("launch_message") or "Not generated by the workflow."),
+            body
+        ))
+        story.append(Paragraph("Message Hierarchy", h2))
+        hierarchy = [
+            ("Problem", val(discovery, "problem", default="Not generated.")),
+            ("Audience", ", ".join(
+                str(s.get("segment")) for s in discovery.get("target_users", [])
+                if isinstance(s, dict) and s.get("segment")
+            ) or "Not generated."),
+            ("Difference", ", ".join(str(x) for x in as_list(positioning.get("differentiators"))) or "Not generated."),
+            ("Value", val(positioning, "value_proposition", default="Not generated.")),
+            ("Next action", social.get("instagram") or landing.get("cta") or "Not generated."),
+        ]
+        key_value_table(hierarchy)
+        story.append(Spacer(1, 12))
+        story.append(Paragraph("Implementation Notes", h2))
+        story.extend(bullets([
+            "Use the approved brand name consistently across product, website, social profiles, and launch assets.",
+            "Keep positioning and audience language stable while adapting copy length to each channel.",
+            "Use the visual direction as a system: color, typography, composition, imagery, and symbols should reinforce the same strategic personality.",
+            "Treat open questions, assumptions, and proof points as validation work rather than established market facts.",
+        ]))
+        story.append(PageBreak())
+
+        # ---------------------------------------------------------------------
+        # 12 DECISION RECORD
+        # ---------------------------------------------------------------------
+        section("12", "Decision Record & Validation Queue", "What is decided, what is inferred, and what still needs human validation.")
+        story.append(Paragraph("User Decisions", h2))
+        if selected:
+            for key, value in selected.items():
+                if key in {"last_revision"}:
+                    continue
+                story.append(Paragraph(
+                    f"<b>{cls._sanitize(key)}:</b> {cls._sanitize(value)}",
+                    body
+                ))
+        else:
+            story.append(Paragraph("No explicit selection metadata was stored with this export.", muted))
+
+        story.append(Paragraph("Validation Queue", h2))
+        validation_items = []
+        validation_items.extend([f"Discovery assumption: {x}" for x in as_list(discovery.get("assumptions"))])
+        validation_items.extend([f"Open question: {x}" for x in as_list(discovery.get("open_questions"))])
+        validation_items.extend([f"Proof point to validate: {x}" for x in as_list(positioning.get("proof_points"))])
+        validation_items.extend([f"Naming risk: {x}" for territory in as_list(naming.get("territories"))
+                                 if isinstance(territory, dict)
+                                 for candidate in as_list(territory.get("names"))
+                                 if isinstance(candidate, dict)
+                                 for x in as_list(candidate.get("risks"))])
+        story.extend(bullets(validation_items, empty="No explicit validation queue was generated."))
 
         story.append(Spacer(1, 14))
-
-        # =========================================================================
-        # 4. BRAND NAMING
-        # =========================================================================
-        story.append(Paragraph("04 / BRAND NAMING", eyebrow_style))
-        story.append(Paragraph("Linguistic Territories & Name Selection", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
-
-        story.append(Paragraph(f"<b>Authoritative Selected Name:</b> <font size=14 color='{ACCENT.hexval()}'><b>{cls._sanitize(brand_name)}</b></font>", body_style))
         story.append(Paragraph(
-            "<b>Disclaimer:</b> <i>AI preliminary assessment — Not legal or trademark clearance. "
-            "Please perform formal trademark availability searches with an intellectual property attorney before public filing.</i>",
-            disclaimer_style
+            "This final section deliberately distinguishes generated strategy from validated reality. "
+            "BrandForge's role is to create a coherent decision system; founders remain responsible for customer research, "
+            "legal clearance, competitive verification, and final business decisions.",
+            ParagraphStyle("BF_FinalNote", parent=body, fontName="Helvetica-Oblique", textColor=MUTED)
         ))
 
-        # Naming Territories
-        territories = naming.get("territories", [])
-        if territories and isinstance(territories, list):
-            story.append(Paragraph("<b>Explored Naming Territories:</b>", h2_style))
-            terr_rows = [["Territory", "Description", "Candidate Names"]]
-            for terr in territories[:3]:
-                if isinstance(terr, dict):
-                    t_type = cls._sanitize(terr.get("type", "Territory"))
-                    t_desc = cls._sanitize(terr.get("description", ""))
-                    t_names = []
-                    for n in terr.get("names", []):
-                        if isinstance(n, dict):
-                            t_names.append(n.get("name", ""))
-                        elif isinstance(n, str):
-                            t_names.append(n)
-                    terr_rows.append([
-                        Paragraph(f"<b>{t_type}</b>", body_style),
-                        Paragraph(t_desc, body_muted_style),
-                        Paragraph(", ".join(t_names[:4]), body_style)
-                    ])
-            if len(terr_rows) > 1:
-                terr_table = Table(terr_rows, colWidths=[130, 210, 180])
-                terr_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), CARD_BG),
-                    ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]))
-                story.append(terr_table)
-
-        story.append(PageBreak())
-
-        # =========================================================================
-        # 5. VISUAL IDENTITY SYSTEM
-        # =========================================================================
-        story.append(Paragraph("05 / VISUAL IDENTITY", eyebrow_style))
-        story.append(Paragraph("Color Palette, Typography & Graphic Language", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
-
-        # Palette
-        palette = visual.get("color_palette", [])
-        if palette and isinstance(palette, list):
-            story.append(Paragraph("<b>Color Palette System:</b>", h2_style))
-            pal_rows = [["Role", "Color Value (HEX)", "Usage / Rationale"]]
-            for color_item in palette[:6]:
-                if isinstance(color_item, dict):
-                    role = cls._sanitize(color_item.get("role", "Color"))
-                    hex_val = cls._sanitize(color_item.get("hex", "#000000"))
-                    desc = cls._sanitize(color_item.get("usage", color_item.get("name", "")))
-                    pal_rows.append([
-                        Paragraph(f"<b>{role}</b>", body_style),
-                        Paragraph(f"<code>{hex_val}</code>", body_style),
-                        Paragraph(desc, body_muted_style)
-                    ])
-            if len(pal_rows) > 1:
-                pal_table = Table(pal_rows, colWidths=[130, 130, 260])
-                pal_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]))
-                story.append(pal_table)
-
-        # Typography Hierarchy
-        typo = visual.get("typography") or {}
-        story.append(Spacer(1, 10))
-        story.append(Paragraph("<b>Typography Hierarchy:</b>", h2_style))
-        h_font = typo.get("headline", "Display Serif (Georgia / Newsreader)") if isinstance(typo, dict) else "Display Serif"
-        b_font = typo.get("body", "Functional Sans (Inter / Plus Jakarta Sans)") if isinstance(typo, dict) else "Functional Sans"
-        c_font = typo.get("code", "Modern Monospace (JetBrains Mono)") if isinstance(typo, dict) else "Modern Monospace"
-        
-        typo_table = Table([
-            [Paragraph("<b>Role</b>", body_style), Paragraph("<b>Font Selection</b>", body_style), Paragraph("<b>Attributes</b>", body_style)],
-            [Paragraph("Headline", body_style), Paragraph(cls._sanitize(h_font), body_style), Paragraph("Editorial gravity, bold authority", body_muted_style)],
-            [Paragraph("Body", body_style), Paragraph(cls._sanitize(b_font), body_style), Paragraph("High legibility, clean readability", body_muted_style)],
-            [Paragraph("Code / Mono", body_style), Paragraph(cls._sanitize(c_font), body_style), Paragraph("Technical precision, studio tags", body_muted_style)],
-        ], colWidths=[100, 220, 200])
-        typo_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), CARD_BG),
-            ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-            ("TOPPADDING", (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ]))
-        story.append(typo_table)
-
-        # Shape & Logo Direction
-        logo = visual.get("logo_direction") or {}
-        concept = logo.get("concept") or visual.get("mood") or "Sharp, structured neo-editorial minimalism"
-        story.append(Spacer(1, 8))
-        story.append(Paragraph(f"<b>Logo & Mood Direction:</b> {cls._sanitize(concept)}", body_style))
-
-        story.append(Spacer(1, 14))
-
-        # =========================================================================
-        # 6. BRAND BATTLE (ADVERSARIAL CRITIQUE)
-        # =========================================================================
-        story.append(Paragraph("06 / BRAND BATTLE CRITIQUE", eyebrow_style))
-        story.append(Paragraph("Adversarial Stress Testing & Vulnerabilities", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
-
-        issues = critique.get("issues", [])
-        if issues and isinstance(issues, list):
-            crit_rows = [["Severity", "Vulnerability / Issue", "Strategic Recommendation"]]
-            for issue in issues[:4]:
-                if isinstance(issue, dict):
-                    sev = cls._sanitize(issue.get("severity", "Medium")).upper()
-                    iss_text = cls._sanitize(issue.get("issue", issue.get("title", "")))
-                    rec = cls._sanitize(issue.get("recommendation", ""))
-                    crit_rows.append([
-                        Paragraph(f"<b>{sev}</b>", body_style),
-                        Paragraph(iss_text, body_style),
-                        Paragraph(rec, body_muted_style)
-                    ])
-            if len(crit_rows) > 1:
-                crit_table = Table(crit_rows, colWidths=[80, 220, 220])
-                crit_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7F1D1D")),  # Dark red
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]))
-                story.append(crit_table)
-        else:
-            story.append(Paragraph("No critical vulnerabilities detected. Brand narrative demonstrates solid resilience.", body_style))
-
-        story.append(PageBreak())
-
-        # =========================================================================
-        # 7. CONSISTENCY GUARDIAN
-        # =========================================================================
-        story.append(Paragraph("07 / CONSISTENCY GUARDIAN", eyebrow_style))
-        story.append(Paragraph("Cross-Stage System Coherence Audit", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
-
-        score = consistency.get("overall_score", 94)
-        story.append(Paragraph(f"<b>Overall Brand Coherence Score:</b> <font size=14 color='{SAGE.hexval()}'><b>{score}/100</b></font>", body_style))
-        story.append(Spacer(1, 6))
-
-        checks = consistency.get("checks", [])
-        if checks and isinstance(checks, list):
-            check_rows = [["Check Element", "Status", "Evaluation & Findings"]]
-            for ch in checks[:5]:
-                if isinstance(ch, dict):
-                    elem = cls._sanitize(ch.get("element", ch.get("name", "System Check")))
-                    status_text = "PASS" if ch.get("pass", True) else "FLAGGED"
-                    finding = cls._sanitize(ch.get("findings", ch.get("detail", "Aligned with core strategy.")))
-                    check_rows.append([
-                        Paragraph(f"<b>{elem}</b>", body_style),
-                        Paragraph(f"<b>{status_text}</b>", body_style),
-                        Paragraph(finding, body_muted_style)
-                    ])
-            if len(check_rows) > 1:
-                chk_table = Table(check_rows, colWidths=[140, 70, 310])
-                chk_table.setStyle(TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), PRIMARY),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("GRID", (0, 0), (-1, -1), 0.5, BORDER),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT_BG]),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]))
-                story.append(chk_table)
-
-        story.append(Spacer(1, 14))
-
-        # =========================================================================
-        # 8. LAUNCH KIT & GO-TO-MARKET
-        # =========================================================================
-        story.append(Paragraph("08 / LAUNCH KIT & GTM ASSETS", eyebrow_style))
-        story.append(Paragraph("Go-To-Market Copy & Landing Blueprint", h1_style))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER, spaceBefore=2, spaceAfter=12))
-
-        pitch = launch.get("one_line_pitch") or tagline
-        landing = launch.get("landing_page") or {}
-        h_copy = landing.get("headline") if isinstance(landing, dict) else launch.get("headline", tagline)
-        sub_copy = landing.get("subheadline") if isinstance(landing, dict) else launch.get("subheadline", "")
-        cta_copy = landing.get("cta") if isinstance(landing, dict) else launch.get("cta", "Start Building Today")
-
-        launch_data_table = [
-            [Paragraph("<b>One-Line Pitch:</b>", body_style), Paragraph(cls._sanitize(pitch), body_style)],
-            [Paragraph("<b>Landing Hero:</b>", body_style), Paragraph(cls._sanitize(h_copy), body_style)],
-            [Paragraph("<b>Subheadline:</b>", body_style), Paragraph(cls._sanitize(sub_copy), body_muted_style)],
-            [Paragraph("<b>Primary CTA:</b>", body_style), Paragraph(f"<b>[ {cls._sanitize(cta_copy)} ]</b>", body_style)],
-        ]
-
-        social = launch.get("social_copy") or {}
-        if isinstance(social, dict) and social.get("twitter_thread"):
-            tt = social.get("twitter_thread")
-            t_str = " | ".join(tt) if isinstance(tt, list) else str(tt)
-            launch_data_table.append([Paragraph("<b>Social Announcement:</b>", body_style), Paragraph(cls._sanitize(t_str[:220]), body_muted_style)])
-
-        l_table = Table(launch_data_table, colWidths=[130, 390])
-        l_table.setStyle(TableStyle([
-            ("BOX", (0, 0), (-1, -1), 1, BORDER),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
-            ("BACKGROUND", (0, 0), (0, -1), CARD_BG),
-            ("TOPPADDING", (0, 0), (-1, -1), 7),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-        ]))
-        story.append(l_table)
-
-        # Build document
         doc.build(story, canvasmaker=NumberedCanvas)
         return buffer.getvalue()
+
