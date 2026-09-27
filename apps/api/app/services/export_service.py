@@ -15,10 +15,20 @@ EXPORTS_DIR = Path("apps/api/data/exports")
 
 class ExportService:
     @staticmethod
-    def _resolve_brand_kit_payload(project_id: str) -> Dict[str, Any]:
+    def _resolve_brand_kit_payload(project_id: str, run_id: str | None = None) -> Dict[str, Any]:
         """Gathers full accumulated state and metadata to render the brand kit."""
         project = repository.get_project_by_id(project_id) or {}
-        state_bundle = repository.get_accumulated_brand_state(project_id)
+        state_bundle = repository.get_accumulated_brand_state(project_id, run_id=run_id)
+
+        # Export from the exact run requested by the UI when available. This prevents
+        # a newly-created revision/empty run from shadowing the completed run that the
+        # user is currently viewing.
+        if run_id:
+            exact_artifacts = repository.get_run_artifacts_map(run_id)
+            if exact_artifacts:
+                merged = dict(state_bundle.get("artifact_map") or {})
+                merged.update(exact_artifacts)
+                state_bundle["artifact_map"] = merged
         artifact_map = state_bundle.get("artifact_map", {})
         launch_data = artifact_map.get("launch", {})
 
@@ -66,7 +76,7 @@ class ExportService:
         }
 
     @staticmethod
-    def create_export_job(project_id: str, user_id: str, export_format: str = "pdf") -> Dict[str, Any]:
+    def create_export_job(project_id: str, user_id: str, export_format: str = "pdf", run_id: str | None = None) -> Dict[str, Any]:
         # Enforce project ownership authorization
         ProjectService.get_user_project(project_id, user_id)
 
@@ -74,7 +84,7 @@ class ExportService:
         if clean_format not in ("pdf", "json"):
             clean_format = "pdf"
 
-        payload = ExportService._resolve_brand_kit_payload(project_id)
+        payload = ExportService._resolve_brand_kit_payload(project_id, run_id=run_id)
         
         # Generate the authoritative export content
         if clean_format == "pdf":
@@ -84,6 +94,8 @@ class ExportService:
 
         storage_path = f"{user_id}/{project_id}/brand_kit.{clean_format}"
         record = repository.create_export(project_id=project_id, export_type=clean_format, storage_path=storage_path)
+        if run_id:
+            record["run_id"] = run_id
         export_id = record["id"]
 
         # Cache file to storage directory
@@ -147,7 +159,7 @@ class ExportService:
                 content_bytes = f.read()
         else:
             # Re-generate deterministically from authoritative state
-            payload = ExportService._resolve_brand_kit_payload(project_id)
+            payload = ExportService._resolve_brand_kit_payload(project_id, run_id=record.get("run_id") or None)
             if export_format == "pdf":
                 content_bytes = BrandKitPDFGenerator.generate(payload)
             else:

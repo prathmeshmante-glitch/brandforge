@@ -337,7 +337,7 @@ export default function ProjectStudioPage() {
       setExportNotice({ type: 'loading', message: 'Generating ReportLab Brand Kit PDF...' });
 
       // Request real PDF generation
-      const res = await api.exportBrandKit(projectId, 'pdf');
+      const res = await api.exportBrandKit(projectId, 'pdf', activeRunId);
 
       if (res?.download_url) {
         const cleanName = (selectedName || 'BrandForge').replace(/[^a-zA-Z0-9_-]/g, '_');
