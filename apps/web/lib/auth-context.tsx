@@ -143,34 +143,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Safety timeout to prevent indefinite loading states in production
-    const safetyTimeout = setTimeout(() => {
-      if (mounted && authState === 'initializing') {
-        console.warn('[BrandForge Auth]: Session initialization safety timeout reached.');
-        setAuthState('network_error');
-        setAuthError('Authentication verification timed out. Please check your network connection.');
-      }
+    // Never allow auth initialization to hang indefinitely in production.
+    let settled = false;
+    const finishTimeout = setTimeout(() => {
+      if (!mounted || settled) return;
+      settled = true;
+      console.warn('[BrandForge Auth]: Session initialization timed out.');
+      setAuthState('network_error');
+      setAuthError('Authentication verification timed out. Please check your Supabase URL, network connection, and deployment configuration.');
     }, 5000);
 
-    // Initial session retrieval
-    supabase.auth.getSession()
-      .then(({ data: { session: initialSession }, error }) => {
-        if (!mounted) return;
-        clearTimeout(safetyTimeout);
-
+    const resolveSession = async () => {
+      try {
+        const result = await Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Supabase session request timed out')), 4500)),
+        ]);
+        if (!mounted || settled) return;
+        settled = true;
+        clearTimeout(finishTimeout);
+        const { data: { session: initialSession }, error } = result as any;
         if (error) {
           console.warn('[BrandForge Auth]: getSession returned error:', error);
           setAuthState('network_error');
           setAuthError(formatAuthErrorMessage(error));
           return;
         }
-
         if (initialSession?.user) {
           setSession(initialSession);
           setUser(initialSession.user);
           setAuthState('authenticated');
           setAuthError(null);
-          loadUserProfile(initialSession.user);
+          void loadUserProfile(initialSession.user);
         } else {
           setSession(null);
           setUser(null);
@@ -178,21 +182,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAuthState('unauthenticated');
           setAuthError(null);
         }
-      })
-      .catch((err) => {
-        if (!mounted) return;
-        clearTimeout(safetyTimeout);
-        console.error('[BrandForge Auth]: getSession threw exception:', err);
+      } catch (err: any) {
+        if (!mounted || settled) return;
+        settled = true;
+        clearTimeout(finishTimeout);
+        console.error('[BrandForge Auth]: session initialization failed:', err);
         setAuthState('network_error');
         setAuthError(formatAuthErrorMessage(err));
-      });
+      }
+    };
 
+    void resolveSession();
     // Real-time auth subscription
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return;
-      clearTimeout(safetyTimeout);
+      if (settled) return;
 
       if (currentSession?.user) {
         setSession(currentSession);
@@ -210,7 +216,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
-      clearTimeout(safetyTimeout);
+      settled = true;
+      clearTimeout(finishTimeout);
       subscription.unsubscribe();
     };
   }, [supabase, initAttempt, loadUserProfile]);
