@@ -247,7 +247,7 @@ class GeminiProvider(BaseAIProvider):
             self.api_key = api_key
         else:
             self.api_key = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", "")
-        self.model_name = model_name or os.getenv("GEMINI_MODEL") or "gemini-3.5-flash-lite"
+        self.model_name = model_name or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash-lite"
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY environment variable is not configured.")
 
