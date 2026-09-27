@@ -154,7 +154,7 @@ class BrandKitPDFGenerator:
 
         brand_name = cls._sanitize(brand_kit_data.get("brand_name") or "Pending user selection")
         tagline = cls._sanitize(brand_kit_data.get("tagline") or launch.get("tagline") or "Tagline not generated")
-        raw_idea = project.get("idea") or project.get("description") or project.get("brief") or ""
+        raw_idea = brand_kit_data.get("raw_idea") or project.get("idea") or project.get("description") or project.get("brief") or ""
         constraints = project.get("constraints") or {}
 
         def val(obj, *keys, default=""):
