@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /share/
+Disallow: /dashboard
+Disallow: /projects/
+Disallow: /settings
+Disallow: /auth/
+
+Sitemap: https://brandforge-jade.vercel.app/sitemap.xml

@@ -21,9 +21,26 @@ export const BrandBattleView: React.FC<BrandBattleViewProps> = ({
 
   if (!critiqueData) {
     return (
-      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
-        <Swords size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--coral)' }} />
-        <p style={{ font: '11px monospace' }}>ADVERSARIAL CRITIC AGENT STRESS-TESTING BRAND SYSTEM...</p>
+      <div
+        style={{
+          background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+          border: '1px dashed var(--border)',
+          borderRadius: '16px',
+          padding: '60px 24px',
+          textAlign: 'center',
+          maxWidth: '520px',
+          margin: '40px auto',
+        }}
+      >
+        <Swords size={32} className={isLoading ? 'animate-spin' : ''} style={{ margin: '0 auto 12px', color: 'var(--coral)' }} />
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', margin: '0 0 8px', color: '#fff' }}>
+          {isLoading ? 'Adversarial Critic Testing...' : 'Adversarial Critique Pending'}
+        </h3>
+        <p style={{ color: 'var(--muted)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
+          {isLoading
+            ? 'Stress-testing brand against market clichés, positioning contradictions, and audience mismatches...'
+            : 'Run the 8-Agent Pipeline to challenge assumptions before the market does.'}
+        </p>
       </div>
     );
   }

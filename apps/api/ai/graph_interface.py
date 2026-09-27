@@ -438,3 +438,70 @@ def stream_brand_workflow(initial_state: Dict[str, Any], provider: Optional[Base
             "status": "completed",
             "project_id": initial_state.get("project_id", "")
         }
+
+
+def run_targeted_revision_workflow(
+    initial_state: Dict[str, Any],
+    target_stage: str,
+    feedback: str,
+    provider: Optional[BaseAIProvider] = None
+) -> Dict[str, Any]:
+    """
+    Executes a bounded, targeted revision workflow for the requested target_stage
+    and its dependent downstream stages, persisting artifacts strictly with the new run_id.
+    """
+    state = dict(initial_state)
+    target = target_stage.lower().strip()
+    
+    # Record feedback directive in state
+    selected = state.setdefault("selected_direction", {})
+    selected["last_revision"] = {"target": target, "feedback": feedback}
+    
+    # Normalize target name and execute downstream chain
+    if target in ("discover", "discovery"):
+        state = discover_node(state, provider)
+        state = position_node(state, provider)
+        state = personality_node(state, provider)
+        state = naming_node(state, provider)
+        state = visual_node(state, provider)
+        state = critic_node(state, provider)
+        state = consistency_node(state, provider)
+        state = launch_node(state, provider)
+    elif target in ("position", "positioning"):
+        state = position_node(state, provider)
+        state = personality_node(state, provider)
+        state = naming_node(state, provider)
+        state = visual_node(state, provider)
+        state = critic_node(state, provider)
+        state = consistency_node(state, provider)
+        state = launch_node(state, provider)
+    elif target in ("persona", "personality", "strategist"):
+        state = personality_node(state, provider)
+        state = naming_node(state, provider)
+        state = visual_node(state, provider)
+        state = critic_node(state, provider)
+        state = consistency_node(state, provider)
+        state = launch_node(state, provider)
+    elif target in ("name", "naming"):
+        state = naming_node(state, provider)
+        state = visual_node(state, provider)
+        state = critic_node(state, provider)
+        state = consistency_node(state, provider)
+        state = launch_node(state, provider)
+    elif target in ("visual", "visualize", "visual_direction", "creative"):
+        state = visual_node(state, provider)
+        state = critic_node(state, provider)
+        state = consistency_node(state, provider)
+        state = launch_node(state, provider)
+    elif target in ("launch",):
+        state = launch_node(state, provider)
+    else:
+        state = naming_node(state, provider)
+        state = visual_node(state, provider)
+        state = critic_node(state, provider)
+        state = consistency_node(state, provider)
+        state = launch_node(state, provider)
+
+    state["status"] = "completed"
+    return state
+

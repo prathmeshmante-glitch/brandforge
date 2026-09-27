@@ -21,9 +21,26 @@ export const ConsistencyView: React.FC<ConsistencyViewProps> = ({
 
   if (!consistencyData) {
     return (
-      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
-        <ShieldCheck size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--sage)' }} />
-        <p style={{ font: '11px monospace' }}>CONSISTENCY GUARDIAN AUDITING CROSS-STAGE ALIGNMENT...</p>
+      <div
+        style={{
+          background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+          border: '1px dashed var(--border)',
+          borderRadius: '16px',
+          padding: '60px 24px',
+          textAlign: 'center',
+          maxWidth: '520px',
+          margin: '40px auto',
+        }}
+      >
+        <ShieldCheck size={32} className={isLoading ? 'animate-spin' : ''} style={{ margin: '0 auto 12px', color: 'var(--sage)' }} />
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', margin: '0 0 8px', color: '#fff' }}>
+          {isLoading ? 'Consistency Guardian Auditing...' : 'Consistency Verification Pending'}
+        </h3>
+        <p style={{ color: 'var(--muted)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
+          {isLoading
+            ? 'Verifying multi-stage alignment between positioning, voice, naming, and visual identity...'
+            : 'Run the 8-Agent Pipeline to ensure the complete brand system holds together coherently.'}
+        </p>
       </div>
     );
   }

@@ -20,3 +20,10 @@ class ProjectService:
         if project["user_id"] != user_id:
             raise ForbiddenException("You do not have authorization to access this project")
         return project
+
+    @staticmethod
+    def delete_user_project(project_id: str, user_id: str) -> Dict[str, Any]:
+        ProjectService.get_user_project(project_id, user_id)
+        repository.delete_project(project_id)
+        return {"status": "deleted", "project_id": project_id}
+

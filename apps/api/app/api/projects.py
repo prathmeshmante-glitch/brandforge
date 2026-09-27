@@ -32,3 +32,10 @@ def get_project(project_id: str, current_user: Dict[str, Any] = Depends(get_curr
         "runs_count": len(runs),
         "latest_run_id": latest_run_id
     }
+
+
+@router.delete("/{project_id}", status_code=status.HTTP_200_OK)
+def delete_project(project_id: str, current_user: Dict[str, Any] = Depends(get_current_user)):
+    user_id = current_user["id"]
+    return ProjectService.delete_user_project(project_id=project_id, user_id=user_id)
+

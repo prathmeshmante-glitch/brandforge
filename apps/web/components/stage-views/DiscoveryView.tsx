@@ -21,9 +21,26 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
 
   if (!discoveryData) {
     return (
-      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
-        <Compass size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--indigo)' }} />
-        <p style={{ font: '11px monospace' }}>DISCOVERER AGENT PARSING BRAND CONCEPT...</p>
+      <div
+        style={{
+          background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+          border: '1px dashed var(--border)',
+          borderRadius: '16px',
+          padding: '60px 24px',
+          textAlign: 'center',
+          maxWidth: '520px',
+          margin: '40px auto',
+        }}
+      >
+        <Compass size={32} className={isLoading ? 'animate-spin' : ''} style={{ margin: '0 auto 12px', color: 'var(--indigo)' }} />
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', margin: '0 0 8px', color: '#fff' }}>
+          {isLoading ? 'Discoverer Agent Analyzing...' : 'Discovery Analysis Pending'}
+        </h3>
+        <p style={{ color: 'var(--muted)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
+          {isLoading
+            ? 'Analyzing problem definition, audience segments, and competitive context...'
+            : 'Run the 8-Agent Pipeline to discover core customer segments, market tensions, and strategic problems.'}
+        </p>
       </div>
     );
   }

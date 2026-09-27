@@ -70,6 +70,20 @@ export default function ProjectStudioPage() {
   const [revisionInfo, setRevisionInfo] = useState<{ targetStage: string; reason: string; isExecuting: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  // Human-in-the-loop save state
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [lastSavePayload, setLastSavePayload] = useState<any>(null);
+
+  // Share modal state
+  const [showShareModal, setShowShareModal] = useState<boolean>(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [isGeneratingShare, setIsGeneratingShare] = useState<boolean>(false);
+  const [shareCopied, setShareCopied] = useState<boolean>(false);
+
+  // Export status toast state
+  const [exportNotice, setExportNotice] = useState<{ type: 'loading' | 'success' | 'error'; message: string } | null>(null);
+
   // Load real project details & existing brand kit artifacts
   useEffect(() => {
     async function loadProjectData() {
@@ -182,6 +196,30 @@ export default function ProjectStudioPage() {
     };
   }, [projectId]);
 
+  const executeSaveSelection = async (selection: { direction_type: string; selected_value: any }) => {
+    setSaveStatus('saving');
+    setSaveError(null);
+    setLastSavePayload(selection);
+
+    try {
+      await api.saveSelection(projectId, selection);
+      setSaveStatus('saved');
+      setTimeout(() => {
+        setSaveStatus((prev) => (prev === 'saved' ? 'idle' : prev));
+      }, 3000);
+    } catch (err: any) {
+      console.error('Failed to persist selection:', err);
+      setSaveStatus('error');
+      setSaveError(err?.message || 'Save failed');
+    }
+  };
+
+  const retryLastSave = () => {
+    if (lastSavePayload) {
+      executeSaveSelection(lastSavePayload);
+    }
+  };
+
   // Human Acceptance Action
   const handleAcceptStage = async (nextStageId: string) => {
     setIsLoading(true);
@@ -189,12 +227,10 @@ export default function ProjectStudioPage() {
     setActiveStageId(nextStageId);
 
     try {
-      await api.saveSelection(projectId, {
+      await executeSaveSelection({
         direction_type: activeStageId,
         selected_value: brandState.selected_directions || {},
       });
-    } catch (e) {
-      console.warn('Selection save notice:', e);
     } finally {
       setIsLoading(false);
     }
@@ -218,8 +254,8 @@ export default function ProjectStudioPage() {
           visual_direction: arts.visual || arts.visual_direction,
         }));
       }
-    } catch (e) {
-      console.warn('Revision trigger notice:', e);
+    } catch (e: any) {
+      alert(`Revision notice: ${e?.message || 'Could not queue revision'}`);
     } finally {
       setIsLoading(false);
       setRevisionInfo(null);
@@ -268,47 +304,92 @@ export default function ProjectStudioPage() {
         setActiveStageId('launch');
       }
     } catch (err: any) {
-      alert(`Workflow execution notice: ${err.message || 'Workflow process encountered an issue'}`);
+      alert(`Workflow execution notice: ${err?.message || 'Workflow process encountered an issue'}`);
     } finally {
       setIsStartingPipeline(false);
     }
   };
 
   // Direct Selections
-  const handleSelectDirection = (directionName: string) => {
+  const handleSelectDirection = async (directionName: string) => {
+    const updatedDirections = {
+      ...brandState.selected_directions,
+      positioning_direction: directionName,
+    };
     setBrandState((prev: any) => ({
       ...prev,
-      selected_directions: {
-        ...prev.selected_directions,
-        positioning_direction: directionName,
-      },
+      selected_directions: updatedDirections,
     }));
+    await executeSaveSelection({
+      direction_type: 'positioning_direction',
+      selected_value: updatedDirections,
+    });
   };
 
-  const handleSelectName = (name: string) => {
+  const handleSelectName = async (name: string) => {
+    const updatedDirections = {
+      ...brandState.selected_directions,
+      chosen_name: name,
+    };
     setBrandState((prev: any) => ({
       ...prev,
-      selected_directions: {
-        ...prev.selected_directions,
-        chosen_name: name,
-      },
+      selected_directions: updatedDirections,
     }));
+    await executeSaveSelection({
+      direction_type: 'chosen_name',
+      selected_value: updatedDirections,
+    });
   };
 
-  // Brand Kit Export Trigger
+  // Real Brand Kit PDF Export Trigger
   const handleExportPDF = async () => {
     try {
       setIsLoading(true);
-      const res = await api.exportBrandKit(projectId, 'json');
+      setExportNotice({ type: 'loading', message: 'Generating ReportLab Brand Kit PDF...' });
+
+      // Request real PDF generation
+      const res = await api.exportBrandKit(projectId, 'pdf');
+
       if (res?.download_url) {
-        window.open(`${api.getBaseUrl()}${res.download_url}`, '_blank');
+        const cleanName = (selectedName || 'BrandForge').replace(/[^a-zA-Z0-9_-]/g, '_');
+        await api.downloadExportFile(res.download_url, `${cleanName}-Brand-Kit.pdf`);
+        setExportNotice({ type: 'success', message: 'Brand Kit PDF downloaded successfully!' });
       } else {
-        alert('Brand Kit export generated successfully!');
+        setExportNotice({ type: 'success', message: 'Brand Kit export generated successfully!' });
       }
+      setTimeout(() => setExportNotice(null), 4000);
     } catch (e: any) {
-      alert(`Export notice: ${e.message || 'Check backend artifacts'}`);
+      setExportNotice({ type: 'error', message: `Export failed: ${e?.message || 'Unable to generate PDF'}` });
+      setTimeout(() => setExportNotice(null), 5000);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Real Brand Kit Share Trigger
+  const handleOpenShare = async () => {
+    setShowShareModal(true);
+    setShareCopied(false);
+    setIsGeneratingShare(true);
+
+    try {
+      const res = await api.createShareLink(projectId);
+      if (res?.share_token) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : '';
+        setShareUrl(`${origin}/share/${res.share_token}`);
+      }
+    } catch (err: any) {
+      console.error('Failed to create share link:', err);
+    } finally {
+      setIsGeneratingShare(false);
+    }
+  };
+
+  const handleCopyShareUrl = () => {
+    if (shareUrl && navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
     }
   };
 
@@ -325,7 +406,8 @@ export default function ProjectStudioPage() {
 
   return (
     <ProtectedRoute>
-      <div className="studio-shell">
+      <>
+        <div className="studio-shell">
       {/* Studio Header */}
       <header className="studio-header">
         <div className="studio-brand">
@@ -341,26 +423,169 @@ export default function ProjectStudioPage() {
         </div>
 
         <div className="studio-header-actions">
-          <span className="live-status">
-            <span /> Saved to studio
-          </span>
-          <button
-            className="header-action"
-            onClick={() => {
-              if (navigator.clipboard) {
-                navigator.clipboard.writeText(window.location.href);
-                alert('Studio URL copied to clipboard.');
-              }
-            }}
-          >
+          {/* Visible Save Status Feedback */}
+          {saveStatus === 'saving' && (
+            <span className="live-status" style={{ color: 'var(--accent)' }}>
+              <RefreshCw size={11} className="animate-spin" /> Saving...
+            </span>
+          )}
+          {saveStatus === 'saved' && (
+            <span className="live-status" style={{ color: 'var(--sage)' }}>
+              <CircleCheck size={12} /> Saved ✓
+            </span>
+          )}
+          {saveStatus === 'error' && (
+            <button
+              onClick={retryLastSave}
+              className="live-status"
+              style={{ color: '#ff857a', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+              title={saveError || 'Save failed'}
+            >
+              <CircleAlert size={12} /> Save failed — Retry
+            </button>
+          )}
+          {saveStatus === 'idle' && (
+            <span className="live-status">
+              <span /> Studio synced
+            </span>
+          )}
+
+          <button className="header-action" onClick={handleOpenShare}>
             <Share2 size={13} style={{ marginRight: '4px' }} /> Share
           </button>
           <button className="header-action" onClick={handleExportPDF} disabled={isLoading}>
-            <Download size={14} /> Export
+            <Download size={14} /> Export PDF
           </button>
           <div className="top-avatar">BF</div>
         </div>
       </header>
+
+      {/* Export Notice Toast */}
+      {exportNotice && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 100,
+            background: exportNotice.type === 'error' ? 'rgba(40, 15, 15, 0.95)' : '#15161d',
+            border: `1px solid ${exportNotice.type === 'error' ? 'rgba(255, 107, 94, 0.4)' : exportNotice.type === 'success' ? 'rgba(92, 225, 160, 0.4)' : 'var(--border-strong)'}`,
+            borderRadius: '12px',
+            padding: '12px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+            fontSize: '12px',
+            color: exportNotice.type === 'error' ? '#ff857a' : exportNotice.type === 'success' ? '#82f7c0' : '#fff',
+          }}
+        >
+          {exportNotice.type === 'loading' && <RefreshCw size={14} className="animate-spin" />}
+          {exportNotice.type === 'success' && <CircleCheck size={14} />}
+          {exportNotice.type === 'error' && <CircleAlert size={14} />}
+          <span>{exportNotice.message}</span>
+        </div>
+      )}
+
+      {/* Public Share Modal */}
+      {showShareModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#15161d',
+              border: '1px solid var(--border-strong)',
+              borderRadius: '16px',
+              padding: '28px',
+              maxWidth: '480px',
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Share2 size={16} color="var(--accent)" />
+                <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', margin: 0, fontWeight: 500 }}>
+                  Share Brand Kit
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowShareModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: '12px', color: 'var(--muted)', lineHeight: 1.6, marginBottom: '20px' }}>
+              Create a public, read-only link to share this brand identity specification with stakeholders, clients, or investors. No login required.
+            </p>
+
+            {isGeneratingShare ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--subtle)' }}>
+                <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 8px', color: 'var(--accent)' }} />
+                <span style={{ fontSize: '11px', fontFamily: 'monospace' }}>GENERATING PUBLIC TOKEN...</span>
+              </div>
+            ) : shareUrl ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    readOnly
+                    value={shareUrl}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(0,0,0,0.4)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '10px 14px',
+                      color: '#fff',
+                      fontSize: '11px',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={handleCopyShareUrl}
+                    className="button button-primary"
+                    style={{ flex: 1, fontSize: '12px', justifyContent: 'center' }}
+                  >
+                    {shareCopied ? 'Copied to Clipboard ✓' : 'Copy Share Link'}
+                  </button>
+                  <a
+                    href={shareUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="button button-outline"
+                    style={{ fontSize: '12px', textDecoration: 'none', display: 'flex', alignItems: 'center' }}
+                  >
+                    Open View ↗
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div style={{ color: '#ff857a', fontSize: '12px' }}>
+                Failed to generate public share token. Please ensure the project exists.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 3-Column Studio Layout */}
       <div className="studio-layout">
@@ -750,13 +975,14 @@ export default function ProjectStudioPage() {
     </div>
 
     {/* Brand Intelligence Studio Assistant Drawer */}
-    <BrandChatDrawer
-      projectId={projectId}
-      projectName={selectedName}
-      onBrandStateUpdated={(updatedState) => {
-        setBrandState((prev: any) => ({ ...prev, ...updatedState }));
-      }}
-    />
+      <BrandChatDrawer
+        projectId={projectId}
+        projectName={selectedName}
+        onBrandStateUpdated={(updatedState) => {
+          setBrandState((prev: any) => ({ ...prev, ...updatedState }));
+        }}
+      />
+      </>
     </ProtectedRoute>
   );
 }

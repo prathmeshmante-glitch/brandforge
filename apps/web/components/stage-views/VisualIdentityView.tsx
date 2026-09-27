@@ -18,9 +18,26 @@ export const VisualIdentityView: React.FC<VisualIdentityViewProps> = ({
 }) => {
   if (!visualData) {
     return (
-      <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--subtle)' }}>
-        <Palette size={28} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--sage)' }} />
-        <p style={{ font: '11px monospace' }}>CREATIVE DIRECTOR RENDERING VISUAL IDENTITY & PALETTE...</p>
+      <div
+        style={{
+          background: 'linear-gradient(145deg, #15161cdd, #101116cc)',
+          border: '1px dashed var(--border)',
+          borderRadius: '16px',
+          padding: '60px 24px',
+          textAlign: 'center',
+          maxWidth: '520px',
+          margin: '40px auto',
+        }}
+      >
+        <Palette size={32} className={isLoading ? 'animate-spin' : ''} style={{ margin: '0 auto 12px', color: 'var(--sage)' }} />
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '20px', margin: '0 0 8px', color: '#fff' }}>
+          {isLoading ? 'Creative Director Rendering...' : 'Visual Identity System Pending'}
+        </h3>
+        <p style={{ color: 'var(--muted)', fontSize: '12px', lineHeight: 1.6, margin: 0 }}>
+          {isLoading
+            ? 'Generating harmonized color palettes, typography hierarchies, and logo design directives...'
+            : 'Run the 8-Agent Pipeline to materialize visual tokens grounded in your brand identity.'}
+        </p>
       </div>
     );
   }

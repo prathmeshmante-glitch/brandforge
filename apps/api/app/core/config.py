@@ -49,6 +49,58 @@ def _resolve_supabase_secret_key() -> str:
     return ""
 
 
+def _resolve_cors_origins() -> List[str]:
+    """
+    Computes strict environment-specific CORS origins.
+    Under production, wildcard '*' is strictly forbidden.
+    """
+    env = (os.getenv("ENVIRONMENT") or "development").strip().lower()
+    is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"))
+    custom_origins = [o.strip() for o in (os.getenv("ALLOWED_ORIGINS") or "").split(",") if o.strip()]
+    production_origins = [
+        "https://brandforge-jade.vercel.app",
+        "https://brandforge.ai",
+        "https://www.brandforge.ai",
+    ]
+    if env == "production" or is_render:
+        # In production, NEVER allow "*"
+        return list(dict.fromkeys(production_origins + custom_origins))
+
+    dev_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+    ]
+    return list(dict.fromkeys(dev_origins + production_origins + custom_origins))
+
+
+def _validate_production_ai_provider():
+    """
+    Validates that a real, functional AI provider and its credentials exist in production.
+    Mock AI mode is strictly prohibited in production.
+    """
+    env = (os.getenv("ENVIRONMENT") or "development").strip().lower()
+    is_render = bool(os.getenv("RENDER") or os.getenv("RENDER_SERVICE_ID"))
+    provider = (os.getenv("AI_PROVIDER") or "gemini").strip().lower()
+
+    if env == "production" or is_render:
+        if provider == "mock":
+            raise RuntimeError(
+                "Production configuration error: MockAIProvider is disallowed in production. "
+                "Configure a real AI provider (gemini, openai, anthropic)."
+            )
+        if provider == "openai":
+            if not (os.getenv("OPENAI_API_KEY") or "").strip():
+                raise RuntimeError("Production configuration error: OPENAI_API_KEY is required when AI_PROVIDER=openai.")
+        elif provider == "gemini":
+            if not (os.getenv("GEMINI_API_KEY") or "").strip():
+                raise RuntimeError("Production configuration error: GEMINI_API_KEY is required when AI_PROVIDER=gemini.")
+        elif provider == "anthropic":
+            if not (os.getenv("ANTHROPIC_API_KEY") or "").strip():
+                raise RuntimeError("Production configuration error: ANTHROPIC_API_KEY is required when AI_PROVIDER=anthropic.")
+
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "BrandForge API"
     VERSION: str = "1.0.0"
@@ -60,18 +112,23 @@ class Settings(BaseSettings):
     SUPABASE_SECRET_KEY: str = _resolve_supabase_secret_key()
     SUPABASE_JWT_SECRET: str = os.getenv("SUPABASE_JWT_SECRET", "")
     
-    # AI Keys
+    # AI Keys & Provider Selection
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "gemini")
+    AI_MODEL: str = os.getenv("AI_MODEL", "")
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "*"]
+    CORS_ORIGINS: List[str] = _resolve_cors_origins()
     
     class Config:
         env_file = ("apps/api/.env", ".env", "apps/web/.env.local")
         extra = "ignore"
 
 
+# Validate on startup
+_validate_production_ai_provider()
+
 settings = Settings()
+

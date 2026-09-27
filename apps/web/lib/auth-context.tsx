@@ -1,8 +1,15 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { User, Session, AuthError } from '@supabase/supabase-js';
 import { getSupabaseClient, getSupabaseConfigStatus } from './supabase';
+
+export type AuthState =
+  | 'initializing'
+  | 'authenticated'
+  | 'unauthenticated'
+  | 'configuration_error'
+  | 'network_error';
 
 export function formatAuthErrorMessage(error: any): string {
   if (!error) return 'An unknown error occurred.';
@@ -33,10 +40,10 @@ export function formatAuthErrorMessage(error: any): string {
     return 'Rate limit reached. Please wait a few moments before requesting another confirmation email.';
   }
   if (lower.includes('token has expired') || lower.includes('link has expired') || lower.includes('expired')) {
-    return 'This confirmation link has expired. Please request a new confirmation email below.';
+    return 'This confirmation or reset link has expired. Please request a new one.';
   }
   if (lower.includes('invalid') && (lower.includes('token') || lower.includes('link') || lower.includes('code'))) {
-    return 'Invalid or expired confirmation link. Please request a new confirmation email.';
+    return 'Invalid or expired confirmation link. Please request a new one.';
   }
   if (
     lower.includes('failed to fetch') ||
@@ -44,14 +51,13 @@ export function formatAuthErrorMessage(error: any): string {
     lower.includes('fetch failed') ||
     lower.includes('authretryablefetcherror')
   ) {
-    return 'Unable to reach the authentication service. Please verify your internet connection and Supabase configuration.';
+    return 'Unable to reach the authentication service. Please verify your internet connection and Supabase status.';
   }
 
   return msg;
 }
 
 export interface UserProfile {
-
   id: string;
   name: string;
   email: string;
@@ -63,8 +69,13 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   isLoading: boolean;
+  authState: AuthState;
+  authError: string | null;
+  retryInit: () => void;
   signIn: (email: string, password: string) => Promise<{ data?: any; error?: AuthError | Error | null }>;
   signUp: (name: string, email: string, password: string) => Promise<{ data?: any; error?: AuthError | Error | null }>;
+  resetPasswordForEmail: (email: string) => Promise<{ data?: any; error?: AuthError | Error | null }>;
+  updatePassword: (password: string) => Promise<{ data?: any; error?: AuthError | Error | null }>;
   verifyOtp: (email: string, token: string) => Promise<{ data?: any; error?: AuthError | Error | null }>;
   resendOtp: (email: string) => Promise<{ data?: any; error?: AuthError | Error | null }>;
   resendVerification: (email: string) => Promise<{ data?: any; error?: AuthError | Error | null }>;
@@ -79,11 +90,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authState, setAuthState] = useState<AuthState>('initializing');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [initAttempt, setInitAttempt] = useState(0);
 
   const supabase = useMemo(() => getSupabaseClient(), []);
 
-  const loadUserProfile = async (currentUser: User) => {
+  const loadUserProfile = useCallback(async (currentUser: User) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -104,56 +117,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn('Could not query profiles table, falling back to metadata:', e);
     }
 
-    // Fallback from user object
     setProfile({
       id: currentUser.id,
       name: currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Studio Founder',
       email: currentUser.email || '',
       avatar_url: currentUser.user_metadata?.avatar_url,
     });
-  };
+  }, [supabase]);
+
+  const retryInit = useCallback(() => {
+    setAuthState('initializing');
+    setAuthError(null);
+    setInitAttempt((prev) => prev + 1);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
-    const status = getSupabaseConfigStatus();
+    const configStatus = getSupabaseConfigStatus();
 
-    if (!status.isConfigured) {
-      setIsLoading(false);
+    if (!configStatus.isConfigured) {
+      if (mounted) {
+        setAuthState('configuration_error');
+        setAuthError(configStatus.errorMessage);
+      }
       return;
     }
 
-    // 1. Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        loadUserProfile(session.user);
+    // Safety timeout to prevent indefinite loading states in production
+    const safetyTimeout = setTimeout(() => {
+      if (mounted && authState === 'initializing') {
+        console.warn('[BrandForge Auth]: Session initialization safety timeout reached.');
+        setAuthState('network_error');
+        setAuthError('Authentication verification timed out. Please check your network connection.');
       }
-      setIsLoading(false);
-    });
+    }, 5000);
 
-    // 2. Real-time auth state subscription
+    // Initial session retrieval
+    supabase.auth.getSession()
+      .then(({ data: { session: initialSession }, error }) => {
+        if (!mounted) return;
+        clearTimeout(safetyTimeout);
+
+        if (error) {
+          console.warn('[BrandForge Auth]: getSession returned error:', error);
+          setAuthState('network_error');
+          setAuthError(formatAuthErrorMessage(error));
+          return;
+        }
+
+        if (initialSession?.user) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          setAuthState('authenticated');
+          setAuthError(null);
+          loadUserProfile(initialSession.user);
+        } else {
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setAuthState('unauthenticated');
+          setAuthError(null);
+        }
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        clearTimeout(safetyTimeout);
+        console.error('[BrandForge Auth]: getSession threw exception:', err);
+        setAuthState('network_error');
+        setAuthError(formatAuthErrorMessage(err));
+      });
+
+    // Real-time auth subscription
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       if (!mounted) return;
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      clearTimeout(safetyTimeout);
 
       if (currentSession?.user) {
+        setSession(currentSession);
+        setUser(currentSession.user);
+        setAuthState('authenticated');
+        setAuthError(null);
         await loadUserProfile(currentSession.user);
       } else {
+        setSession(null);
+        setUser(null);
         setProfile(null);
+        setAuthState('unauthenticated');
       }
-      setIsLoading(false);
     });
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [supabase, initAttempt, loadUserProfile]);
 
   const signIn = async (email: string, password: string) => {
     const status = getSupabaseConfigStatus();
@@ -161,7 +221,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: new Error(status.errorMessage || 'Supabase configuration is missing.') };
     }
 
-    setIsLoading(true);
     try {
       const result = await supabase.auth.signInWithPassword({ email, password });
       if (result.error) {
@@ -170,13 +229,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.data?.user && result.data?.session) {
         setUser(result.data.user);
         setSession(result.data.session);
+        setAuthState('authenticated');
+        setAuthError(null);
         await loadUserProfile(result.data.user);
       }
       return { data: result.data };
     } catch (err: any) {
       return { error: err };
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -191,7 +250,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ? `${window.location.origin}/auth/callback`
         : undefined;
 
-    setIsLoading(true);
     try {
       const result = await supabase.auth.signUp({
         email,
@@ -207,13 +265,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.data?.user && result.data?.session) {
         setUser(result.data.user);
         setSession(result.data.session);
+        setAuthState('authenticated');
+        setAuthError(null);
         await loadUserProfile(result.data.user);
       }
       return { data: result.data, error: result.error };
     } catch (err: any) {
       return { error: err };
-    } finally {
-      setIsLoading(false);
+    }
+  };
+
+  const resetPasswordForEmail = async (email: string) => {
+    const status = getSupabaseConfigStatus();
+    if (!status.isConfigured) {
+      return { error: new Error(status.errorMessage || 'Supabase configuration is missing.') };
+    }
+
+    const redirectTo =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/reset-password`
+        : undefined;
+
+    try {
+      const result = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo,
+      });
+      return { data: result.data, error: result.error };
+    } catch (err: any) {
+      return { error: err };
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    const status = getSupabaseConfigStatus();
+    if (!status.isConfigured) {
+      return { error: new Error(status.errorMessage || 'Supabase configuration is missing.') };
+    }
+
+    try {
+      const result = await supabase.auth.updateUser({ password });
+      return { data: result.data, error: result.error };
+    } catch (err: any) {
+      return { error: err };
     }
   };
 
@@ -223,16 +316,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { error: new Error(status.errorMessage || 'Supabase configuration is missing.') };
     }
 
-    setIsLoading(true);
     try {
-      // First try 'signup' OTP type
       let result = await supabase.auth.verifyOtp({
         email,
         token: token.trim(),
         type: 'signup',
       });
 
-      // If 'signup' fails, fallback to 'email' OTP type
       if (result.error) {
         const emailResult = await supabase.auth.verifyOtp({
           email,
@@ -251,14 +341,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (result.data?.user && result.data?.session) {
         setUser(result.data.user);
         setSession(result.data.session);
+        setAuthState('authenticated');
+        setAuthError(null);
         await loadUserProfile(result.data.user);
       }
 
       return { data: result.data };
     } catch (err: any) {
       return { error: err };
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -290,14 +380,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resendOtp = resendVerification;
 
   const signOut = async () => {
-    setIsLoading(true);
     try {
       await supabase.auth.signOut();
+    } finally {
       setUser(null);
       setSession(null);
       setProfile(null);
-    } finally {
-      setIsLoading(false);
+      setAuthState('unauthenticated');
+      setAuthError(null);
     }
   };
 
@@ -312,6 +402,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isLoading = authState === 'initializing';
+
   return (
     <AuthContext.Provider
       value={{
@@ -319,8 +411,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         profile,
         isLoading,
+        authState,
+        authError,
+        retryInit,
         signIn,
         signUp,
+        resetPasswordForEmail,
+        updatePassword,
         verifyOtp,
         resendOtp,
         resendVerification,

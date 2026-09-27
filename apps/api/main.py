@@ -14,6 +14,7 @@ from apps.api.app.api.selections import router as selections_router
 from apps.api.app.api.artifacts import router as artifacts_router
 from apps.api.app.api.exports import router as exports_router, download_router as exports_download_router
 from apps.api.app.api.chat import router as chat_router
+from apps.api.app.api.share import project_share_router, public_share_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -39,6 +40,9 @@ app.include_router(artifacts_router)
 app.include_router(exports_router)
 app.include_router(exports_download_router)
 app.include_router(chat_router)
+app.include_router(project_share_router)
+app.include_router(public_share_router)
+
 
 
 @app.get("/", tags=["Health"])

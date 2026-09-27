@@ -1,0 +1,7 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/ai/graph_interface.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/api/chat.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/api/exports.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/api/projects.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/api/workflows.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/app/core/config.py', LF will be replaced by CRLF the next time Git touches it

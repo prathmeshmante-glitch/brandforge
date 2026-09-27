@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -10,4 +11,7 @@ class RevisionResponse(BaseModel):
     status: str
     project_id: str
     target_stage: str
+    new_run_id: Optional[str] = None
+    run_id: Optional[str] = None
     message: str
+

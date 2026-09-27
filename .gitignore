@@ -11,3 +11,5 @@ dist/
 scratch/
 apps/api/data/*.json
 *.log
+# Local BrandForge runtime data
+apps/api/data/

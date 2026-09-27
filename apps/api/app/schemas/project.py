@@ -3,8 +3,8 @@ from typing import Optional, Dict, Any, List
 
 
 class ProjectCreate(BaseModel):
-    name: str = Field(..., min_length=1, description="Project name/title")
-    idea: str = Field(..., min_length=5, description="Raw startup or product idea description")
+    name: str = Field(..., min_length=1, max_length=120, description="Project name/title")
+    idea: str = Field(..., min_length=5, max_length=10000, description="Raw startup or product idea description")
     constraints: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Optional constraints")
 
 
@@ -13,6 +13,7 @@ class ProjectResponse(BaseModel):
     user_id: str
     name: str
     idea: str
+    constraints: Dict[str, Any] = Field(default_factory=dict, description="Structured project constraints and metadata")
     status: str
     created_at: str
     updated_at: str
@@ -21,3 +22,4 @@ class ProjectResponse(BaseModel):
 class ProjectDetailResponse(ProjectResponse):
     runs_count: int = 0
     latest_run_id: Optional[str] = None
+

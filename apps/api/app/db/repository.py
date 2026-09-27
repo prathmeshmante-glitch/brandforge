@@ -36,6 +36,7 @@ class DataRepository:
         self._selections_db: List[Dict[str, Any]] = []
         self._exports_db: Dict[str, Dict[str, Any]] = {}
         self._chat_db: List[Dict[str, Any]] = []
+        self._shares_db: Dict[str, Dict[str, Any]] = {}
         
         # Check and log production persistence configuration
         self._verify_persistence_configuration()
@@ -75,6 +76,7 @@ class DataRepository:
                     self._selections_db = data.get("selections", [])
                     self._exports_db = data.get("exports", {})
                     self._chat_db = data.get("chat", [])
+                    self._shares_db = data.get("shares", {})
                     logger.debug("Loaded development fallback state from disk.")
         except Exception as e:
             logger.debug(f"Could not load fallback state from disk: {e}")
@@ -91,6 +93,7 @@ class DataRepository:
                     "selections": self._selections_db,
                     "exports": self._exports_db,
                     "chat": self._chat_db,
+                    "shares": self._shares_db,
                 }, f, indent=2)
         except Exception as e:
             logger.debug(f"Could not save fallback state to disk (expected on read-only/ephemeral filesystems): {e}")
@@ -120,6 +123,7 @@ class DataRepository:
                     "user_id": user_id,
                     "name": name,
                     "idea": idea,
+                    "constraints": constraints or {},
                     "status": "created",
                     "created_at": now_str,
                     "updated_at": now_str,
@@ -141,12 +145,18 @@ class DataRepository:
                 res = self.client.table("projects").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
                 if res and res.data is not None:
                     for item in res.data:
+                        if "constraints" not in item or item["constraints"] is None:
+                            item["constraints"] = {}
                         self._projects_db[item["id"]] = item
                     return res.data
             except Exception as e:
                 logger.warning(f"Supabase list_projects read failed: {e}")
 
-        return [p for p in self._projects_db.values() if p.get("user_id") == user_id]
+        projects = [p for p in self._projects_db.values() if p.get("user_id") == user_id]
+        for p in projects:
+            if "constraints" not in p or p["constraints"] is None:
+                p["constraints"] = {}
+        return sorted(projects, key=lambda x: x.get("created_at", ""), reverse=True)
 
     def get_project_by_id(self, project_id: str) -> Optional[Dict[str, Any]]:
         # Read from Supabase (Production Source of Truth)
@@ -155,12 +165,39 @@ class DataRepository:
                 res = self.client.table("projects").select("*").eq("id", project_id).limit(1).execute()
                 if res and res.data and len(res.data) > 0:
                     record = res.data[0]
+                    if "constraints" not in record or record["constraints"] is None:
+                        record["constraints"] = {}
                     self._projects_db[project_id] = record
                     return record
             except Exception as e:
                 logger.warning(f"Supabase get_project_by_id read failed: {e}")
 
-        return self._projects_db.get(project_id)
+        proj = self._projects_db.get(project_id)
+        if proj and ("constraints" not in proj or proj["constraints"] is None):
+            proj["constraints"] = {}
+        return proj
+
+    def delete_project(self, project_id: str) -> bool:
+        """Deletes a project and all cascading entities."""
+        if self.client:
+            try:
+                self.client.table("projects").delete().eq("id", project_id).execute()
+            except Exception as e:
+                logger.warning(f"Supabase delete_project write failed: {e}")
+
+        if project_id in self._projects_db:
+            del self._projects_db[project_id]
+
+        # Clean up related entities from cache
+        run_ids = [r["id"] for r in self._runs_db.values() if r.get("project_id") == project_id]
+        self._runs_db = {k: v for k, v in self._runs_db.items() if v.get("project_id") != project_id}
+        self._artifacts_db = [a for a in self._artifacts_db if a.get("run_id") not in run_ids]
+        self._selections_db = [s for s in self._selections_db if s.get("project_id") != project_id]
+        self._exports_db = {k: v for k, v in self._exports_db.items() if v.get("project_id") != project_id}
+        self._chat_db = [c for c in self._chat_db if c.get("project_id") != project_id]
+        self._shares_db = {k: v for k, v in self._shares_db.items() if v.get("project_id") != project_id}
+        self._save_to_fallback_disk()
+        return True
 
     # ==========================================
     # BRAND RUNS
@@ -344,16 +381,34 @@ class DataRepository:
     # ==========================================
     # AUTHORITATIVE BRAND STATE
     # ==========================================
-    def get_accumulated_brand_state(self, project_id: str) -> Dict[str, Any]:
+    # ==========================================
+    # AUTHORITATIVE BRAND STATE
+    # ==========================================
+    def get_run_artifacts_map(self, run_id: str) -> Dict[str, Any]:
+        """Returns the dictionary of stage artifacts specifically generated in a particular run."""
+        artifacts = self.get_artifacts_for_run(run_id)
+        art_map: Dict[str, Any] = {}
+        for a in artifacts:
+            stage = a.get("stage", "")
+            if stage in ("visualize", "visual_direction"):
+                stage = "visual"
+            art_map[stage] = a.get("artifact_json", {})
+        if "visual" in art_map:
+            art_map["visual_direction"] = art_map["visual"]
+        elif "visual_direction" in art_map:
+            art_map["visual"] = art_map["visual_direction"]
+        return art_map
+
+    def get_accumulated_brand_state(self, project_id: str, run_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Single authoritative source of truth for a project's BrandState.
-        Accumulates across all runs for the project (latest runs take precedence for any stage).
+        Maintains explicit separation between Current Run, Previous Runs,
+        Approved State, and Draft State.
         """
         project = self.get_project_by_id(project_id) or {}
         runs = self.list_runs_for_project(project_id)
         sorted_runs = sorted(runs, key=lambda r: r.get("version", 0))
         
-        artifact_map: Dict[str, Any] = {}
         canonical_stages = [
             "discovery",
             "positioning",
@@ -365,14 +420,27 @@ class DataRepository:
             "launch",
         ]
         
-        for r in sorted_runs:
-            for a in self.get_artifacts_for_run(r["id"]):
-                stage = a.get("stage", "")
-                if stage in ("visualize", "visual_direction"):
-                    stage = "visual"
-                artifact_map[stage] = a.get("artifact_json", {})
+        # Target run: specific run_id or the latest run
+        target_run = None
+        if run_id:
+            target_run = next((r for r in sorted_runs if r["id"] == run_id), None)
+        if not target_run and sorted_runs:
+            target_run = sorted_runs[-1]
 
-        # Ensure visual alias exists for consumers expecting visual_direction
+        # Artifacts from specifically the target/current run
+        current_run_artifacts = self.get_run_artifacts_map(target_run["id"]) if target_run else {}
+
+        # Historical runs (all runs prior to target run)
+        historical_runs = [r for r in sorted_runs if target_run and r["id"] != target_run["id"]]
+
+        # Authoritative accumulated state: runs processed in version order
+        artifact_map: Dict[str, Any] = {}
+        for r in sorted_runs:
+            run_arts = self.get_run_artifacts_map(r["id"])
+            for stage, art_json in run_arts.items():
+                artifact_map[stage] = art_json
+
+        # Ensure visual alias exists
         if "visual" in artifact_map:
             artifact_map["visual_direction"] = artifact_map["visual"]
         elif "visual_direction" in artifact_map:
@@ -381,23 +449,24 @@ class DataRepository:
         selections = self.get_selections_for_project(project_id)
         selected_dict = {s.get("direction_type"): s.get("selected_value") for s in selections}
         
-        latest_run = sorted_runs[-1] if sorted_runs else None
         completed_stages = [s for s in canonical_stages if s in artifact_map]
         
         overall_status = "created"
         if len(completed_stages) == len(canonical_stages):
             overall_status = "completed"
-        elif latest_run:
-            overall_status = latest_run.get("status", "in_progress")
+        elif target_run:
+            overall_status = target_run.get("status", "in_progress")
         elif completed_stages:
             overall_status = "in_progress"
 
         return {
             "project_id": project_id,
             "project": project,
-            "latest_run": latest_run,
-            "run_id": latest_run["id"] if latest_run else None,
+            "latest_run": target_run,
+            "run_id": target_run["id"] if target_run else None,
             "artifact_map": artifact_map,
+            "current_run_artifacts": current_run_artifacts,
+            "historical_runs": historical_runs,
             "completed_stages": completed_stages,
             "total_stages": len(canonical_stages),
             "stages_completed_ratio": f"{len(completed_stages)}/{len(canonical_stages)}",
@@ -478,6 +547,8 @@ class DataRepository:
                     "project_id": project_id,
                     "role": role,
                     "content": content,
+                    "tool_calls": tool_calls or [],
+                    "mentor_data": mentor_data or {},
                     "created_at": now_str,
                 }).execute()
             except Exception as e:
@@ -493,23 +564,80 @@ class DataRepository:
             try:
                 res = self.client.table("chat_messages").select("*").eq("project_id", project_id).order("created_at").execute()
                 if res and res.data is not None:
-                    supabase_msgs = []
                     for item in res.data:
-                        local_match = next((m for m in self._chat_db if m["id"] == item["id"]), None)
-                        if local_match:
-                            merged = {
-                                **item,
-                                "tool_calls": local_match.get("tool_calls", []),
-                                "mentor_data": local_match.get("mentor_data", {})
-                            }
-                            supabase_msgs.append(merged)
-                        else:
-                            supabase_msgs.append(item)
-                    return supabase_msgs
+                        if "tool_calls" not in item or item["tool_calls"] is None:
+                            item["tool_calls"] = []
+                        if "mentor_data" not in item or item["mentor_data"] is None:
+                            item["mentor_data"] = {}
+                    return res.data
             except Exception as e:
                 logger.warning(f"Supabase list_chat_messages read failed: {e}")
 
-        return [m for m in self._chat_db if m.get("project_id") == project_id]
+        msgs = [m for m in self._chat_db if m.get("project_id") == project_id]
+        return sorted(msgs, key=lambda x: x.get("created_at", ""))
+
+    # ==========================================
+    # SHARED BRAND KITS
+    # ==========================================
+    def create_shared_brand_kit(
+        self,
+        project_id: str,
+        share_token: str,
+        brand_name: str,
+        snapshot: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        now_str = datetime.now(timezone.utc).isoformat()
+        share_id = str(uuid.uuid4())
+        record = {
+            "id": share_id,
+            "project_id": project_id,
+            "share_token": share_token,
+            "brand_name": brand_name,
+            "snapshot": snapshot,
+            "is_active": True,
+            "created_at": now_str,
+        }
+
+        if self.client:
+            try:
+                res = self.client.table("shared_brand_kits").insert(record).execute()
+                if res and res.data and len(res.data) > 0:
+                    record = res.data[0]
+            except Exception as e:
+                logger.warning(f"Supabase create_shared_brand_kit write failed: {e}")
+
+        self._shares_db[share_token] = record
+        self._save_to_fallback_disk()
+        return record
+
+    def get_shared_brand_kit_by_token(self, share_token: str) -> Optional[Dict[str, Any]]:
+        if self.client:
+            try:
+                res = self.client.table("shared_brand_kits").select("*").eq("share_token", share_token).eq("is_active", True).limit(1).execute()
+                if res and res.data and len(res.data) > 0:
+                    record = res.data[0]
+                    self._shares_db[share_token] = record
+                    return record
+            except Exception as e:
+                logger.warning(f"Supabase get_shared_brand_kit_by_token read failed: {e}")
+
+        share = self._shares_db.get(share_token)
+        if share and share.get("is_active", True):
+            return share
+        return None
+
+    def revoke_shared_brand_kit(self, share_token: str) -> bool:
+        if self.client:
+            try:
+                self.client.table("shared_brand_kits").update({"is_active": False}).eq("share_token", share_token).execute()
+            except Exception as e:
+                logger.warning(f"Supabase revoke_shared_brand_kit failed: {e}")
+
+        if share_token in self._shares_db:
+            self._shares_db[share_token]["is_active"] = False
+            self._save_to_fallback_disk()
+        return True
 
 
 repository = DataRepository()
+

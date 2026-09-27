@@ -2,8 +2,24 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://brandforge-jade.vercel.app'),
   title: 'BrandForge — From rough idea to launch-ready brand',
-  description: 'An AI brand intelligence studio for turning unstructured ideas into coherent, launch-ready brand systems.',
+  description: 'An AI brand intelligence studio for turning unstructured ideas into coherent, launch-ready brand systems through 8-agent reasoning, human decisions, critique, and consistency.',
+  keywords: ['AI branding', 'brand intelligence', 'startup branding', 'brand strategy', 'brand kit generator', 'naming agent'],
+  authors: [{ name: 'BrandForge Studio' }],
+  openGraph: {
+    title: 'BrandForge — AI Brand Intelligence Studio',
+    description: 'From rough idea to launch-ready brand. 8-stage AI agent reasoning with human gates, adversarial critique, and vector PDF brand books.',
+    url: 'https://brandforge-jade.vercel.app',
+    siteName: 'BrandForge',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'BrandForge — AI Brand Intelligence Studio',
+    description: 'From rough idea to launch-ready brand. 8 specialized AI agents creating complete, consistent brand identities.',
+  },
   icons: {
     icon: [
       {
