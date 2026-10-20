@@ -1,3 +1,13 @@
+<div align="right">
+
+<a href="https://prathmeshmante-glitch.github.io/?repo=prathmeshmante-glitch%2Fbrandforge"><img src="https://img.shields.io/badge/ASK_V.E.R.A.-VOICE_GUIDED_REPOSITORY-B87333?style=for-the-badge&logoColor=FFF3DC" alt="Ask VERA to explain this repository"/></a>
+
+<sub>Open V.E.R.A. to hear a guided briefing of this repository's public README and metadata.</sub>
+
+</div>
+
+---
+
 # BrandForge — AI Brand Intelligence Studio
 
 > **From rough idea to launch-ready brand.**
